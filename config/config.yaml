@@ -1,0 +1,8 @@
+db:
+  address: localhost
+  port: 3666
+  username: kcapp
+  password: abcd1234
+  schema: kcapp-odds
+api:
+  port: 9001
