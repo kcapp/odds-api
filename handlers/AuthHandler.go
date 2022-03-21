@@ -16,35 +16,30 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	var authdetails models.Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode("Error in request body")
+		http.Error(w, "Error in request body", http.StatusBadRequest)
 		return
 	}
 
 	var authuser *models.User
 	authuser, err = data.GetUser(authdetails.Login)
 	if authuser == nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode("Username does not exist")
+		http.Error(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
 	if authuser.Login == "" {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode("Username or Password is incorrect")
+		http.Error(w, "Username or password is incorrect", http.StatusNotFound)
 		return
 	}
 	check := CheckPasswordHash(authdetails.Password, authuser.Password)
 
 	if !check {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode("Username or Password is incorrect")
+		http.Error(w, "Username or password is incorrect", http.StatusNotFound)
 		return
 	}
 
 	validToken, err := GenerateJWT(authuser.Login)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode("Failed to generate token")
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
 
@@ -52,7 +47,10 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	token.Login = authuser.Login
 	token.TokenString = validToken
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(token)
+	err = json.NewEncoder(w).Encode(token)
+	if err != nil {
+		return
+	}
 }
 
 func GenerateHashPassword(password string) (string, error) {
