@@ -24,7 +24,8 @@ func main() {
 	models.InitDB(config.GetMysqlConnectionString())
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{id}", handlers.GetUser).Methods("GET")
+	router.HandleFunc("/user/{login}", handlers.GetUser).Methods("GET")
+	router.HandleFunc("/user/login", handlers.SignIn).Methods("POST", "OPTIONS")
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))

@@ -6,18 +6,17 @@ import (
 	"github.com/kcapp/odds-api/data"
 	"log"
 	"net/http"
-	"strconv"
 )
 
 func GetUser(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
-	id, err := strconv.Atoi(params["id"])
-	if err != nil {
-		log.Println("Invalid id parameter")
-		http.Error(writer, err.Error(), http.StatusBadRequest)
+	login := params["login"]
+	if login == "" {
+		log.Println("Invalid login")
+		http.Error(writer, "Invalid login", http.StatusBadRequest)
 		return
 	}
-	user, err := data.GetUser(id)
+	user, err := data.GetUser(login)
 	if err != nil {
 		log.Println("Unable to get user", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
