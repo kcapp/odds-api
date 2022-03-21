@@ -23,6 +23,11 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 
 	var authuser *models.User
 	authuser, err = data.GetUser(authdetails.Login)
+	if authuser == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode("Username does not exist")
+		return
+	}
 	if authuser.Login == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode("Username or Password is incorrect")
