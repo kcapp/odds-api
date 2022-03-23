@@ -14,7 +14,8 @@ type Authentication struct {
 	Password string `json:"password"`
 }
 
-type Token struct {
-	Login       string `json:"login"`
-	TokenString string `json:"token"`
+type Response struct {
+	Login          string `json:"login"`
+	TokenString    string `json:"token"`
+	RequiresChange bool   `json:"requiresChange"`
 }

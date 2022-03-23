@@ -16,7 +16,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	var authdetails models.Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
 	if err != nil {
-		http.Error(w, "Error in request body", http.StatusBadRequest)
+		http.Error(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
 
@@ -27,13 +27,13 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if authuser.Login == "" {
-		http.Error(w, "Username or password is incorrect", http.StatusNotFound)
+		http.Error(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
 	check := CheckPasswordHash(authdetails.Password, authuser.Password)
 
 	if !check {
-		http.Error(w, "Username or password is incorrect", http.StatusNotFound)
+		http.Error(w, "Username or password incorrect", http.StatusInternalServerError)
 		return
 	}
 
@@ -43,11 +43,12 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var token models.Token
-	token.Login = authuser.Login
-	token.TokenString = validToken
+	var response models.Response
+	response.Login = authuser.Login
+	response.TokenString = validToken
+	response.RequiresChange = authuser.RequiresChange
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(token)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		return
 	}
