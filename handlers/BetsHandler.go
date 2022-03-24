@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/kcapp/odds-api/data"
@@ -27,9 +28,12 @@ func GetUserTournamentsGamesBets(writer http.ResponseWriter, request *http.Reque
 	}
 
 	bets, err := data.GetUserTournamentGamesBets(uid, tid)
-	if err != nil {
-		match := models.BetMatch{}
-		json.NewEncoder(writer).Encode(match)
+	if err == sql.ErrNoRows {
+		json.NewEncoder(writer).Encode(new(models.BetMatch))
+		return
+	} else if err != nil {
+		log.Println("Unable to get bets", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
