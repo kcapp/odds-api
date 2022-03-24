@@ -4,7 +4,7 @@ import (
 	"github.com/kcapp/odds-api/models"
 )
 
-func GetUser(login string) (*models.User, error) {
+func GetUserByLogin(login string) (*models.User, error) {
 	u := new(models.User)
 	err := models.DB.QueryRow(`
 		SELECT

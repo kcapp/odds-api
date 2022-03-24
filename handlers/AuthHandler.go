@@ -21,7 +21,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var authuser *models.User
-	authuser, err = data.GetUser(authdetails.Login)
+	authuser, err = data.GetUserByLogin(authdetails.Login)
 	if authuser == nil {
 		http.Error(w, "Username does not exist", http.StatusInternalServerError)
 		return
@@ -44,6 +44,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response models.Response
+	response.UserId = authuser.ID
 	response.Login = authuser.Login
 	response.TokenString = validToken
 	response.RequiresChange = authuser.RequiresChange

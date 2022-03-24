@@ -15,7 +15,8 @@ type Authentication struct {
 }
 
 type Response struct {
+	UserId         int    `json:"user_id"`
 	Login          string `json:"login"`
 	TokenString    string `json:"token"`
-	RequiresChange bool   `json:"requiresChange"`
+	RequiresChange bool   `json:"requires_change"`
 }

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func GetUser(writer http.ResponseWriter, request *http.Request) {
+func GetUserByLogin(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	login := params["login"]
 	if login == "" {
@@ -16,7 +16,7 @@ func GetUser(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Invalid login", http.StatusBadRequest)
 		return
 	}
-	user, err := data.GetUser(login)
+	user, err := data.GetUserByLogin(login)
 	if err != nil {
 		log.Println("Unable to get user", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
