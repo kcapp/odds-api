@@ -27,6 +27,7 @@ func GetUserTournamentsGamesBets(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 
+	SetHeaders(writer)
 	bets, err := data.GetUserTournamentGamesBets(uid, tid)
 	if err == sql.ErrNoRows {
 		json.NewEncoder(writer).Encode(new(models.BetMatch))
