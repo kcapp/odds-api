@@ -1,11 +1,11 @@
 package models
 
 type BetMatch struct {
-	ID           int `json:"id,omitempty"`
-	UserId       int `json:"user_id,omitempty"`
-	TournamentId int `json:"tournament_id,omitempty"`
-	MatchId      int `json:"match_id,omitempty"`
-	Bet1         int `json:"bet_1,omitempty"`
-	BetX         int `json:"bet_x,omitempty"`
-	Bet2         int `json:"bet_2,omitempty"`
+	ID           int `json:"id"`
+	UserId       int `json:"user_id"`
+	TournamentId int `json:"tournament_id"`
+	MatchId      int `json:"match_id"`
+	Bet1         int `json:"bet_1"`
+	BetX         int `json:"bet_x"`
+	Bet2         int `json:"bet_2"`
 }
