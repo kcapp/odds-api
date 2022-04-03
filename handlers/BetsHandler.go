@@ -40,3 +40,23 @@ func GetUserTournamentsGamesBets(writer http.ResponseWriter, request *http.Reque
 
 	json.NewEncoder(writer).Encode(bets)
 }
+
+// AddVisit will add the visit to the database
+func AddBet(writer http.ResponseWriter, reader *http.Request) {
+	var bet models.BetMatch
+	err := json.NewDecoder(reader.Body).Decode(&bet)
+	if err != nil {
+		log.Println("Unable to deserialize bet json", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	betId, err := data.AddBet(bet)
+	if err != nil {
+		log.Println("Unable to add bet", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(writer).Encode(betId)
+}

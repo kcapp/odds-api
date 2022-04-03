@@ -18,3 +18,17 @@ func GetUserByLogin(login string) (*models.User, error) {
 
 	return u, nil
 }
+
+func GetUserTournamentBalance(userId int, tournamentId int) (*models.UserTournamentBalance, error) {
+	u := new(models.UserTournamentBalance)
+	err := models.DB.QueryRow(`
+		SELECT uc.id, uc.user_id, uc.tournament_id, uc.coins, uc.tournament_coins
+		FROM user_coins uc
+		WHERE uc.user_id = ? AND uc.tournament_id = ?`, userId, tournamentId).
+		Scan(&u.ID, &u.UserId, &u.TournamentId, &u.Coins, &u.TournamentCoins)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}

@@ -1,6 +1,8 @@
 package data
 
-import "github.com/kcapp/odds-api/models"
+import (
+	"github.com/kcapp/odds-api/models"
+)
 
 func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
@@ -31,4 +33,45 @@ func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, e
 	}
 
 	return bets, nil
+}
+
+func AddBet(bet models.BetMatch) (int64, error) {
+	var s string
+	if bet.ID == nil {
+		s = `INSERT INTO bets_matches (id, user_id, match_id, tournament_id, bet1, betx, bet2) 
+			VALUES (?, ?, ?, ?, ?, ?, ?)`
+	} else {
+		s = `REPLACE INTO bets_matches (id, user_id, match_id, tournament_id, bet1, betx, bet2)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`
+	}
+
+	tx, err := models.DB.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := tx.Exec(s, bet.ID, bet.UserId, bet.MatchId, bet.TournamentId, bet.Bet1, bet.BetX, bet.Bet2)
+	if err != nil {
+		err := tx.Rollback()
+		if err != nil {
+			return 0, err
+		}
+		return 0, err
+	}
+
+	betId, err := res.LastInsertId()
+	if err != nil {
+		err := tx.Rollback()
+		if err != nil {
+			return 0, err
+		}
+		return 0, err
+	}
+
+	// log.Printf("Created / updated bet (%d)", betId)
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+	return betId, err
 }
