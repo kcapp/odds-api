@@ -58,5 +58,6 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 		return
 	}
 
+	SetHeaders(writer)
 	json.NewEncoder(writer).Encode(betId)
 }

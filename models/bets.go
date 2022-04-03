@@ -6,7 +6,7 @@ type BetMatch struct {
 	TournamentId int  `json:"tournament_id"`
 	MatchId      int  `json:"match_id"`
 	Bet1         int  `json:"bet_1"`
-	BetX         int  `json:"bet_x,omitempty"`
+	BetX         int  `json:"bet_x"`
 	Bet2         int  `json:"bet_2"`
 }
 
