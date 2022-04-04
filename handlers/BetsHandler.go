@@ -51,7 +51,7 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 		return
 	}
 
-	betId, err := data.AddBet(bet)
+	err = data.AddBet(bet)
 	if err != nil {
 		log.Println("Unable to add bet", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -59,5 +59,5 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 	}
 
 	SetHeaders(writer)
-	json.NewEncoder(writer).Encode(betId)
+	json.NewEncoder(writer).Encode("")
 }
