@@ -1,7 +1,7 @@
 package models
 
 type BetMatch struct {
-	ID           *int    `json:"id"`
+	ID           int     `json:"id"`
 	UserId       int     `json:"user_id"`
 	TournamentId int     `json:"tournament_id"`
 	MatchId      int     `json:"match_id"`
@@ -23,8 +23,9 @@ type UserTournamentBalance struct {
 }
 
 type UserActiveBets struct {
-	UserId       int `json:"user_id"`
-	TournamentId int `json:"tournament_id"`
-	Bets         int `json:"bets"`
-	Coins        int `json:"coins"`
+	UserId          int `json:"user_id"`
+	TournamentId    int `json:"tournament_id"`
+	BetsTotal       int `json:"bets"`
+	AvailableCoins  int `json:"coins"`
+	CurrentSavedBet int `json:"current_saved_bet,omitempty"`
 }
