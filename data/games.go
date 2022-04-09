@@ -1,6 +1,7 @@
 package data
 
 import (
+	"errors"
 	"github.com/kcapp/odds-api/models"
 )
 
@@ -26,8 +27,11 @@ func FinishGame(gf models.GameFinish) (int64, error) {
 
 	args := make([]interface{}, 0)
 	args = append(args, gf.WinnerId, gf.MatchId)
-
 	lid, err := RunTransaction(s, args...)
+
+	if err != nil {
+		return 0, errors.New("error setting outcome")
+	}
 
 	return lid, err
 }

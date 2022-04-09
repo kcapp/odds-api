@@ -43,6 +43,11 @@ func AddBet(bet models.BetMatch) (int64, error) {
 	if bet.ID == 0 {
 		s = `INSERT INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+		// We are placing new bet, but we might be passing 0s only
+		if bet.Bet1+bet.Bet2+bet.BetX == 0 {
+			return 0, errors.New("can't place an empty bet")
+		}
 	} else {
 		s = `REPLACE INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -58,6 +63,19 @@ func AddBet(bet models.BetMatch) (int64, error) {
 	err = ValidateInput(bet)
 	if err != nil {
 		return 0, err
+	}
+
+	// We can have an existing bet with 0s passed, then we should remove the row from the db
+	if bet.Bet1+bet.Bet2+bet.BetX == 0 {
+		s = `DELETE FROM bets_games
+				WHERE match_id = ? and user_id = ? AND outcome IS NULL
+				AND match_id NOT IN (SELECT gm.match_id from games_metadata gm WHERE gm.bets_off = 1)`
+		args := make([]interface{}, 0)
+		args = append(args, bet.MatchId, bet.UserId)
+
+		lid, err := RunTransaction(s, args...)
+
+		return lid, err
 	}
 
 	tx, err := models.DB.Begin()
@@ -144,6 +162,16 @@ func UpdateUserCoins(userId int, tournamentId int, bets int) error {
 	return err
 }
 
+func CheckBetOff(matchId int) int {
+	var bo int
+	_ = models.DB.QueryRow(`
+				select COALESCE(mg.bets_off, 0)
+				from games_metadata mg
+				where mg.match_id = ?`, matchId).Scan(&bo)
+
+	return bo
+}
+
 func GetUserActiveBets(bm models.BetMatch) (*models.UserActiveBets, error) {
 	var err error
 
@@ -197,6 +225,11 @@ func GetUserBetById(betId int) (*models.BetMatch, error) {
 }
 
 func ValidateInput(bm models.BetMatch) error {
+	betsOff := CheckBetOff(bm.MatchId)
+	if betsOff == 1 {
+		return errors.New("bet are off for this match")
+	}
+
 	uab, err := GetUserActiveBets(bm)
 	if err != nil {
 		return errors.New("can't fetch coin data")
