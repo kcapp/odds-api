@@ -9,7 +9,7 @@ func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, e
 	rows, err := models.DB.Query(`
 		SELECT
 			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2
-		FROM bets_matches bm
+		FROM bets_games bm
 		WHERE bm.user_id = ? and bm.tournament_id = ?`, userId, tournamentId)
 
 	if err != nil {
@@ -41,11 +41,11 @@ func AddBet(bet models.BetMatch) (int64, error) {
 	var err error
 
 	if bet.ID == 0 {
-		s = `INSERT INTO bets_matches (id, user_id, match_id, tournament_id, bet1, betx, bet2, odds1, oddsx, odds2) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		s = `INSERT INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	} else {
-		s = `REPLACE INTO bets_matches (id, user_id, match_id, tournament_id, bet1, betx, bet2, odds1, oddsx, odds2)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		s = `REPLACE INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 		// This is an update of existing row,
 		// the coins value are (coins now + row's value) - new bet values
@@ -65,7 +65,7 @@ func AddBet(bet models.BetMatch) (int64, error) {
 		return 0, errors.New("error creating transaction")
 	}
 
-	res, err := tx.Exec(s, bet.ID, bet.UserId, bet.MatchId, bet.TournamentId, bet.Bet1, bet.BetX, bet.Bet2, bet.Odds1, bet.OddsX, bet.Odds2)
+	res, err := tx.Exec(s, bet.ID, bet.UserId, bet.MatchId, bet.TournamentId, bet.Player1, bet.Player2, bet.Bet1, bet.BetX, bet.Bet2, bet.Odds1, bet.OddsX, bet.Odds2)
 	if err != nil {
 		err := tx.Rollback()
 		if err != nil {
@@ -154,24 +154,19 @@ func GetUserActiveBets(bm models.BetMatch) (*models.UserActiveBets, error) {
 					   coalesce(sum(bm.bet1 + bm.betx + bm.bet2),0) as betsTotal,
 					   uc.coins as availableCoins, coalesce(sum(bmc.bet1 + bmc.betx + bmc.bet2),0) currentSavedBet
 				from user_coins uc
-				left join bets_matches bm on uc.user_id = bm.user_id and uc.tournament_id = bm.tournament_id
-				left join bets_matches bmc on uc.user_id = bmc.user_id and uc.tournament_id = bmc.tournament_id and bmc.id = ?
+				left join bets_games bm on uc.user_id = bm.user_id and uc.tournament_id = bm.tournament_id
+				left join bets_games bmc on uc.user_id = bmc.user_id and uc.tournament_id = bmc.tournament_id and bmc.id = ?
 				and bm.id != ? and bm.outcome is null
 				where uc.user_id = ? and uc.tournament_id = ?`, bm.ID, bm.ID, bm.UserId, bm.TournamentId).
 			Scan(&uab.UserId, &uab.TournamentId, &uab.BetsTotal, &uab.AvailableCoins, &uab.CurrentSavedBet)
 	} else {
 		err = models.DB.QueryRow(`
--- 		SELECT bm.user_id, bm.tournament_id, sum(bm.bet1) + sum(bm.bet2) as bets, uc.coins from
--- 		bets_matches bm
--- 		JOIN user_coins uc on bm.user_id = uc.user_id and bm.tournament_id = uc.tournament_id
--- 		WHERE bm.user_id = ? AND bm.tournament_id = ?
--- 		and bm.outcome is null
-select uc.user_id, uc.tournament_id,
-       coalesce(sum(bm.bet1 + bm.betx + bm.bet2),0) as bets,
-       uc.coins
-from user_coins uc
-left join bets_matches bm on uc.user_id = bm.user_id and uc.tournament_id = bm.tournament_id and bm.outcome is null
-where uc.user_id = ? and uc.tournament_id = ? 
+				select uc.user_id, uc.tournament_id,
+					   coalesce(sum(bm.bet1 + bm.betx + bm.bet2),0) as bets,
+					   uc.coins
+				from user_coins uc
+				left join bets_games bm on uc.user_id = bm.user_id and uc.tournament_id = bm.tournament_id and bm.outcome is null
+				where uc.user_id = ? and uc.tournament_id = ? 
 		`, bm.UserId, bm.TournamentId).
 			Scan(&uab.UserId, &uab.TournamentId, &uab.BetsTotal, &uab.AvailableCoins)
 	}
@@ -189,7 +184,7 @@ func GetUserBetById(betId int) (*models.BetMatch, error) {
 	{
 		err = models.DB.QueryRow(`
 		SELECT bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2 
-		FROM bets_matches bm
+		FROM bets_games bm
 		WHERE bm.id = ?`, betId).
 			Scan(&bm.ID, &bm.UserId, &bm.MatchId, &bm.TournamentId, &bm.Bet1, &bm.BetX, &bm.Bet2)
 	}

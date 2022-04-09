@@ -5,4 +5,4 @@ db:
   password: abcd1234
   schema: kcapp-odds
 api:
-  port: 9001
+  port: 9999

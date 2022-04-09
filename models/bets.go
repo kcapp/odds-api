@@ -5,6 +5,8 @@ type BetMatch struct {
 	UserId       int     `json:"user_id"`
 	TournamentId int     `json:"tournament_id"`
 	MatchId      int     `json:"match_id"`
+	Player1      int     `json:"player_1"`
+	Player2      int     `json:"player_2"`
 	Bet1         int     `json:"bet_1"`
 	BetX         int     `json:"bet_x"`
 	Bet2         int     `json:"bet_2"`
