@@ -7,10 +7,12 @@ import (
 
 func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
-		SELECT
-			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2
-		FROM bets_games bm
-		WHERE bm.user_id = ? and bm.tournament_id = ?`, userId, tournamentId)
+			SELECT
+			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome, 
+			       COALESCE(gm.bets_off, 0) as bets_off
+			FROM bets_games bm
+			LEFT JOIN games_metadata gm on bm.match_id = gm.match_id
+			WHERE bm.user_id = ? and bm.tournament_id = ?`, userId, tournamentId)
 
 	if err != nil {
 		return nil, err
@@ -20,7 +22,7 @@ func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, e
 	bets := make([]*models.BetMatch, 0)
 	for rows.Next() {
 		b := new(models.BetMatch)
-		err := rows.Scan(&b.ID, &b.UserId, &b.MatchId, &b.TournamentId, &b.Bet1, &b.BetX, &b.Bet2)
+		err := rows.Scan(&b.ID, &b.UserId, &b.MatchId, &b.TournamentId, &b.Bet1, &b.BetX, &b.Bet2, &b.Outcome, &b.BetsOff)
 		if err != nil {
 			return nil, err
 		}

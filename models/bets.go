@@ -13,7 +13,8 @@ type BetMatch struct {
 	Odds1        float64 `json:"odds_1"`
 	OddsX        float64 `json:"odds_x"`
 	Odds2        float64 `json:"odds_2"`
-	Outcome      int     `json:"outcome,omitempty"`
+	Outcome      *int    `json:"outcome"`
+	BetsOff      int     `json:"bets_off"`
 }
 
 type UserTournamentBalance struct {
