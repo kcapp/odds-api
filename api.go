@@ -34,6 +34,7 @@ func main() {
 
 	router.HandleFunc("/games/{gameId}/start", handlers.StartGame).Methods("POST", "OPTIONS")
 	router.HandleFunc("/games/{gameId}/finish", handlers.FinishGame).Methods("POST", "OPTIONS")
+	router.HandleFunc("/games/meta", handlers.GetGamesMetadata).Methods("GET")
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))

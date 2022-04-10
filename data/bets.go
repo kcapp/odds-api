@@ -240,11 +240,11 @@ func ValidateInput(bm models.BetMatch) error {
 	var newBets int
 
 	// how much can I bet?
-	availableBet := (uab.BetsTotal + uab.AvailableCoins) - (uab.BetsTotal - uab.CurrentSavedBet)
+	availableBet := (uab.BetsTotal + uab.AvailableCoins) - (uab.BetsTotal - float32(uab.CurrentSavedBet))
 	newBets = bm.Bet1 + bm.BetX + bm.Bet2
 
 	// new bet amount can be greater than available amount
-	if newBets > availableBet {
+	if float32(newBets) > availableBet {
 		return errors.New("not enough coins")
 	}
 

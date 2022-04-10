@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/kcapp/odds-api/data"
@@ -62,4 +63,19 @@ func FinishGame(writer http.ResponseWriter, reader *http.Request) {
 	if err != nil {
 		return
 	}
+}
+
+func GetGamesMetadata(writer http.ResponseWriter, request *http.Request) {
+	SetHeaders(writer)
+	md, err := data.GetGamesMetadata()
+	if err == sql.ErrNoRows {
+		json.NewEncoder(writer).Encode(new(models.GameMetadata))
+		return
+	} else if err != nil {
+		log.Println("Unable to get metadata", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(writer).Encode(md)
 }

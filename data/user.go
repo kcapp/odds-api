@@ -22,10 +22,11 @@ func GetUserByLogin(login string) (*models.User, error) {
 func GetUserTournamentBalance(userId int, tournamentId int) (*models.UserTournamentBalance, error) {
 	u := new(models.UserTournamentBalance)
 	err := models.DB.QueryRow(`
-		SELECT uc.id, uc.user_id, uc.tournament_id, uc.coins, uc.tournament_coins
+		SELECT uc.id, uc.user_id, u.first_name, u.last_name, uc.tournament_id, uc.coins, uc.tournament_coins
 		FROM user_coins uc
+		JOIN users u on uc.user_id = u.id
 		WHERE uc.user_id = ? AND uc.tournament_id = ?`, userId, tournamentId).
-		Scan(&u.ID, &u.UserId, &u.TournamentId, &u.Coins, &u.TournamentCoins)
+		Scan(&u.ID, &u.UserId, &u.FirstName, &u.LastName, &u.TournamentId, &u.Coins, &u.TournamentCoins)
 	if err != nil {
 		return nil, err
 	}

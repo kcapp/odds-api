@@ -20,15 +20,17 @@ type BetMatch struct {
 type UserTournamentBalance struct {
 	ID              int     `json:"id"`
 	UserId          int     `json:"user_id"`
+	FirstName       string  `json:"first_name"`
+	LastName        string  `json:"last_name"`
 	TournamentId    int     `json:"tournament_id"`
 	Coins           float64 `json:"coins"`
 	TournamentCoins float64 `json:"tournament_coins"`
 }
 
 type UserActiveBets struct {
-	UserId          int `json:"user_id"`
-	TournamentId    int `json:"tournament_id"`
-	BetsTotal       int `json:"bets"`
-	AvailableCoins  int `json:"coins"`
-	CurrentSavedBet int `json:"current_saved_bet,omitempty"`
+	UserId          int     `json:"user_id"`
+	TournamentId    int     `json:"tournament_id"`
+	BetsTotal       float32 `json:"bets"`
+	AvailableCoins  float32 `json:"coins"`
+	CurrentSavedBet int     `json:"current_saved_bet,omitempty"`
 }
