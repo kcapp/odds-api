@@ -8,7 +8,6 @@ import (
 	"github.com/kcapp/odds-api/data"
 	"github.com/kcapp/odds-api/models"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 	"net/http"
 	"time"
 )
@@ -18,33 +17,28 @@ func ChangePass(w http.ResponseWriter, r *http.Request) {
 	var authdetails models.Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
 	if err != nil {
-		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		JSONError(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
 
 	var authuser *models.User
 	authuser, err = data.GetUserByLogin(authdetails.Login)
 	if authuser == nil {
-		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		JSONError(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
 	if authuser.Login == "" {
-		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		JSONError(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
 
-	lid, err := data.ChangePassword(authdetails)
+	_, err = data.ChangePassword(authdetails)
 	if err != nil {
-		log.Println("Unable to start game", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		JSONError(w, "Password change error", http.StatusInternalServerError)
 		return
 	}
 
-	SetHeaders(w)
-	err = json.NewEncoder(w).Encode(lid)
-	if err != nil {
-		return
-	}
+	JSONSuccess(w, "Password changed", http.StatusOK)
 }
 
 func SignIn(w http.ResponseWriter, r *http.Request) {
@@ -52,18 +46,18 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	var authdetails models.Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
 	if err != nil {
-		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		JSONError(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 
 	var authuser *models.User
 	authuser, err = data.GetUserByLogin(authdetails.Login)
 	if authuser == nil {
-		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		JSONError(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 	if authuser.Login == "" {
-		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		JSONError(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 
@@ -71,13 +65,13 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	check := CheckPasswordHash(string(ds), authuser.Password)
 
 	if !check {
-		http.Error(w, "Username or password incorrect", http.StatusInternalServerError)
+		JSONError(w, "Username or password incorrect", http.StatusInternalServerError)
 		return
 	}
 
 	validToken, err := GenerateJWT(authuser.Login)
 	if err != nil {
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		JSONError(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
 
