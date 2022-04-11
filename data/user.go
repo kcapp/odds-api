@@ -33,3 +33,20 @@ func GetUserTournamentBalance(userId int, tournamentId int) (*models.UserTournam
 
 	return u, nil
 }
+
+//
+//func ChangePassword(ad models.User) (int64, error) {
+//	var s string
+//	var err error
+//
+//	ds, err := base64.StdEncoding.DecodeString(ad.Password)
+//	np := GenerateHashPassword(ds)
+//
+//	s = `UPDATE users (match_id, bets_off) VALUES (?, ?)`
+//	args := make([]interface{}, 0)
+//	args = append(args, gm.MatchId, 1)
+//
+//	lid, err := RunTransaction(s, args...)
+//
+//	return lid, err
+//}

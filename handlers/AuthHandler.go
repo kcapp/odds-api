@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -10,6 +11,44 @@ import (
 	"net/http"
 	"time"
 )
+
+//
+//func ChangePass(w http.ResponseWriter, r *http.Request) {
+//	SetHeaders(w)
+//	var authdetails models.Authentication
+//	err := json.NewDecoder(r.Body).Decode(&authdetails)
+//	if err != nil {
+//		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	var authuser *models.User
+//	authuser, err = data.GetUserByLogin(authdetails.Login)
+//	if authuser == nil {
+//		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+//		return
+//	}
+//	if authuser.Login == "" {
+//		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	//ds, err := base64.StdEncoding.DecodeString(authdetails.Password)
+//	//np := GenerateHashPassword(ds)
+//
+//	lid, err := data.ChangePassword(authdetails)
+//	if err != nil {
+//		log.Println("Unable to start game", err)
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
+//
+//	SetHeaders(w)
+//	err = json.NewEncoder(w).Encode(lid)
+//	if err != nil {
+//		return
+//	}
+//}
 
 func SignIn(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -30,7 +69,9 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Username does not exist", http.StatusInternalServerError)
 		return
 	}
-	check := CheckPasswordHash(authdetails.Password, authuser.Password)
+
+	ds, err := base64.StdEncoding.DecodeString(authdetails.Password)
+	check := CheckPasswordHash(string(ds), authuser.Password)
 
 	if !check {
 		http.Error(w, "Username or password incorrect", http.StatusInternalServerError)
@@ -56,7 +97,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func GenerateHashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
 }
 
