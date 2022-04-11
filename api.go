@@ -26,7 +26,7 @@ func main() {
 	router := mux.NewRouter()
 	// User
 	router.HandleFunc("/user/login", handlers.SignIn).Methods("POST", "OPTIONS")
-	//router.HandleFunc("/user/changepass", handlers.ChangePass).Methods("POST", "OPTIONS")
+	router.HandleFunc("/user/changepass", handlers.ChangePass).Methods("POST", "OPTIONS")
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/balance", handlers.GetUserTournamentBalance).Methods("GET")
 	// Bets
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/bets", handlers.GetUserTournamentsGamesBets).Methods("GET")

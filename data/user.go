@@ -1,7 +1,9 @@
 package data
 
 import (
+	"encoding/base64"
 	"github.com/kcapp/odds-api/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func GetUserByLogin(login string) (*models.User, error) {
@@ -34,19 +36,23 @@ func GetUserTournamentBalance(userId int, tournamentId int) (*models.UserTournam
 	return u, nil
 }
 
-//
-//func ChangePassword(ad models.User) (int64, error) {
-//	var s string
-//	var err error
-//
-//	ds, err := base64.StdEncoding.DecodeString(ad.Password)
-//	np := GenerateHashPassword(ds)
-//
-//	s = `UPDATE users (match_id, bets_off) VALUES (?, ?)`
-//	args := make([]interface{}, 0)
-//	args = append(args, gm.MatchId, 1)
-//
-//	lid, err := RunTransaction(s, args...)
-//
-//	return lid, err
-//}
+func GenerateHashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+func ChangePassword(ad models.Authentication) (int64, error) {
+	var s string
+	var err error
+
+	ds, err := base64.StdEncoding.DecodeString(ad.Password)
+	np, err := GenerateHashPassword(string(ds))
+
+	// update password and change field
+	s = `UPDATE users SET password = ?, requires_change = 0 WHERE login = ?`
+	args := make([]interface{}, 0)
+	args = append(args, np, ad.Login)
+	lid, err := RunTransaction(s, args...)
+
+	return lid, err
+}

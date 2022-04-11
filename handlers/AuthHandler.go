@@ -8,47 +8,44 @@ import (
 	"github.com/kcapp/odds-api/data"
 	"github.com/kcapp/odds-api/models"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"net/http"
 	"time"
 )
 
-//
-//func ChangePass(w http.ResponseWriter, r *http.Request) {
-//	SetHeaders(w)
-//	var authdetails models.Authentication
-//	err := json.NewDecoder(r.Body).Decode(&authdetails)
-//	if err != nil {
-//		http.Error(w, "Username does not exist", http.StatusInternalServerError)
-//		return
-//	}
-//
-//	var authuser *models.User
-//	authuser, err = data.GetUserByLogin(authdetails.Login)
-//	if authuser == nil {
-//		http.Error(w, "Username does not exist", http.StatusInternalServerError)
-//		return
-//	}
-//	if authuser.Login == "" {
-//		http.Error(w, "Username does not exist", http.StatusInternalServerError)
-//		return
-//	}
-//
-//	//ds, err := base64.StdEncoding.DecodeString(authdetails.Password)
-//	//np := GenerateHashPassword(ds)
-//
-//	lid, err := data.ChangePassword(authdetails)
-//	if err != nil {
-//		log.Println("Unable to start game", err)
-//		http.Error(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//
-//	SetHeaders(w)
-//	err = json.NewEncoder(w).Encode(lid)
-//	if err != nil {
-//		return
-//	}
-//}
+func ChangePass(w http.ResponseWriter, r *http.Request) {
+	SetHeaders(w)
+	var authdetails models.Authentication
+	err := json.NewDecoder(r.Body).Decode(&authdetails)
+	if err != nil {
+		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		return
+	}
+
+	var authuser *models.User
+	authuser, err = data.GetUserByLogin(authdetails.Login)
+	if authuser == nil {
+		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		return
+	}
+	if authuser.Login == "" {
+		http.Error(w, "Username does not exist", http.StatusInternalServerError)
+		return
+	}
+
+	lid, err := data.ChangePassword(authdetails)
+	if err != nil {
+		log.Println("Unable to start game", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	SetHeaders(w)
+	err = json.NewEncoder(w).Encode(lid)
+	if err != nil {
+		return
+	}
+}
 
 func SignIn(w http.ResponseWriter, r *http.Request) {
 	SetHeaders(w)
@@ -94,11 +91,6 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-}
-
-func GenerateHashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(bytes), err
 }
 
 func CheckPasswordHash(password, hash string) bool {
