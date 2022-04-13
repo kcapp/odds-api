@@ -29,7 +29,21 @@ type UserTournamentBalance struct {
 	TournamentCoinsOpen   float32 `json:"tournament_coins_open"`
 	TournamentCoinsClosed float32 `json:"tournament_coins_closed"`
 	StartCoins            float32 `json:"start_coins"`
+	CoinsAvailable        float32 `json:"coins_available"`
 }
+
+type SortBalanceByCoinsWon []*UserTournamentBalance
+type SortBalanceByCoinsAvailable []*UserTournamentBalance
+
+func (a SortBalanceByCoinsWon) Len() int           { return len(a) }
+func (a SortBalanceByCoinsWon) Less(i, j int) bool { return a[i].CoinsWon > a[j].CoinsWon }
+func (a SortBalanceByCoinsWon) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+func (a SortBalanceByCoinsAvailable) Len() int { return len(a) }
+func (a SortBalanceByCoinsAvailable) Less(i, j int) bool {
+	return a[i].CoinsAvailable > a[j].CoinsAvailable
+}
+func (a SortBalanceByCoinsAvailable) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 type UserActiveBets struct {
 	UserId          int     `json:"user_id"`

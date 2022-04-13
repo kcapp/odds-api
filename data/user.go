@@ -57,6 +57,7 @@ func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*mo
 		TournamentCoinsOpen:   1000,
 		TournamentCoinsClosed: 1000,
 		StartCoins:            startCoins,
+		CoinsAvailable:        startCoins - uab.Coins - uca.Coins + ucw.Coins,
 	}
 
 	return &utb, nil

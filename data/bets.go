@@ -3,6 +3,7 @@ package data
 import (
 	"errors"
 	"github.com/kcapp/odds-api/models"
+	"sort"
 )
 
 func GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId int) (*models.CoinBalance, error) {
@@ -59,6 +60,58 @@ func GetUserTournamentCoinsWon(userId, tournamentId int) (*models.CoinBalance, e
 	}
 
 	return cb, nil
+}
+
+func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
+	rows, err := models.DB.Query(`
+		select bgo.user_id, u.first_name, u.last_name, bgo.tournament_id, 
+			(coalesce(count(bgo.user_id), 0) + coalesce(numBetsClosed, 0)) as numBets,
+	   		sum(bgo.bet1+bgo.betx+bgo.bet2) as openBets,
+	   		COALESCE(coins, 0) as closedBets,
+	   		COALESCE(coinsWon, 0) as coinsWon,
+		       1000, 1000, 1000
+		from bets_games bgo
+		left join (
+			select user_id as uid, tournament_id as tid, sum(bet1+betx+bet2) as coins, count(user_id) as numBetsClosed
+			from bets_games bgc where outcome is not null
+			group by user_id
+			) bgc on bgc.uid = bgo.user_id and bgc.tid = bgo.tournament_id
+		left join (
+			select user_id as uid, tournament_id as tid,
+				   ROUND(SUM(if(bgf.player1 = bgf.outcome, bet1 * odds1, if(bgf.player2 = bgf.outcome, bet2 * odds2, 0))), 2) as coinsWon
+			from bets_games bgf where outcome is not null
+			group by user_id
+			) bgf on bgf.uid = bgo.user_id and bgf.tid = bgo.tournament_id
+		join users u on bgo.user_id = u.id
+		where bgo.tournament_id = ? and bgo.outcome is null
+		group by bgo.user_id`, tournamentId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	balances := make([]*models.UserTournamentBalance, 0)
+	for rows.Next() {
+		b := new(models.UserTournamentBalance)
+		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
+			&b.BetsPlaced, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon,
+			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
+		b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
+		if err != nil {
+			return nil, err
+		}
+
+		balances = append(balances, b)
+	}
+
+	sort.Sort(models.SortBalanceByCoinsAvailable(balances))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return balances, nil
 }
 
 func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, error) {
