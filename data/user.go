@@ -6,6 +6,21 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func GetUserById(id int) (*models.User, error) {
+	u := new(models.User)
+	err := models.DB.QueryRow(`
+		SELECT
+			u.id, u.first_name, u.last_name, u.login, u.password, u.requires_change
+		FROM users u
+		WHERE u.id = ?`, id).
+		Scan(&u.ID, &u.FirstName, &u.LastName, &u.Login, &u.Password, &u.RequiresChange)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
 func GetUserByLogin(login string) (*models.User, error) {
 	u := new(models.User)
 	err := models.DB.QueryRow(`
@@ -21,19 +36,30 @@ func GetUserByLogin(login string) (*models.User, error) {
 	return u, nil
 }
 
-func GetUserTournamentBalance(userId int, tournamentId int) (*models.UserTournamentBalance, error) {
-	u := new(models.UserTournamentBalance)
-	err := models.DB.QueryRow(`
-		SELECT uc.id, uc.user_id, u.first_name, u.last_name, uc.tournament_id, uc.coins, uc.tournament_coins
-		FROM user_coins uc
-		JOIN users u on uc.user_id = u.id
-		WHERE uc.user_id = ? AND uc.tournament_id = ?`, userId, tournamentId).
-		Scan(&u.ID, &u.UserId, &u.FirstName, &u.LastName, &u.TournamentId, &u.Coins, &u.TournamentCoins)
-	if err != nil {
-		return nil, err
+func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*models.UserTournamentBalance, error) {
+	u, _ := GetUserById(userId)
+	uab, _ := GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId)
+	uca, _ := GetUserTournamentCoinsClosed(userId, tournamentId)
+	ucw, _ := GetUserTournamentCoinsWon(userId, tournamentId)
+	tb, _ := GetUserTournamentGamesBets(userId, tournamentId)
+
+	var startCoins float32 = 1000
+
+	utb := models.UserTournamentBalance{
+		UserId:                u.ID,
+		FirstName:             u.FirstName,
+		LastName:              u.LastName,
+		TournamentId:          tournamentId,
+		BetsPlaced:            len(tb),
+		CoinsBetsOpen:         uab.Coins,
+		CoinsBetsClosed:       uca.Coins,
+		CoinsWon:              ucw.Coins,
+		TournamentCoinsOpen:   1000,
+		TournamentCoinsClosed: 1000,
+		StartCoins:            startCoins,
 	}
 
-	return u, nil
+	return &utb, nil
 }
 
 func GenerateHashPassword(password string) (string, error) {

@@ -35,7 +35,7 @@ func GetUserTournamentBalance(writer http.ResponseWriter, request *http.Request)
 		http.Error(writer, "Invalid data", http.StatusBadRequest)
 		return
 	}
-	user, err := data.GetUserTournamentBalance(userId, tournamentId)
+	user, err := data.GetUserTournamentBalance(userId, tournamentId, 0)
 	if err != nil {
 		log.Println("Unable to get user balance data", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)

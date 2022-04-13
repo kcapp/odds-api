@@ -5,6 +5,62 @@ import (
 	"github.com/kcapp/odds-api/models"
 )
 
+func GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId int) (*models.CoinBalance, error) {
+	var s string
+	cb := new(models.CoinBalance)
+
+	if skipGameId != 0 {
+		s = `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
+			from bets_games bg
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null AND bg.id != ?`
+		err := models.DB.QueryRow(s, userId, tournamentId, skipGameId).Scan(&cb.Coins)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		s = `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
+			from bets_games bg
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null`
+		err := models.DB.QueryRow(s, userId, tournamentId).Scan(&cb.Coins)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cb, nil
+}
+
+func GetUserTournamentCoinsClosed(userId, tournamentId int) (*models.CoinBalance, error) {
+	s := `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
+			from bets_games bg
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is not null`
+
+	cb := new(models.CoinBalance)
+	err := models.DB.QueryRow(s, userId, tournamentId).
+		Scan(&cb.Coins)
+	if err != nil {
+		return nil, err
+	}
+
+	return cb, nil
+}
+
+func GetUserTournamentCoinsWon(userId, tournamentId int) (*models.CoinBalance, error) {
+	s := `select COALESCE(sum(ROUND((if(bgf.player1 = bgf.outcome, bet1 * odds1, 0) + 
+                if(bgf.player2 = bgf.outcome, bet2 * odds2, 0)), 2)), 0) as coins
+				from bets_games bgf
+				where bgf.user_id = ? and bgf.tournament_id = ? and bgf.outcome is not null`
+
+	cb := new(models.CoinBalance)
+	err := models.DB.QueryRow(s, userId, tournamentId).
+		Scan(&cb.Coins)
+	if err != nil {
+		return nil, err
+	}
+
+	return cb, nil
+}
+
 func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT
@@ -38,12 +94,11 @@ func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, e
 }
 
 func AddBet(bet models.BetMatch) (int64, error) {
-	var s string
-	var bm *models.BetMatch
+	var sq string
 	var err error
 
 	if bet.ID == 0 {
-		s = `INSERT INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2) 
+		sq = `INSERT INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 		// We are placing new bet, but we might be passing 0s only
@@ -51,15 +106,8 @@ func AddBet(bet models.BetMatch) (int64, error) {
 			return 0, errors.New("can't place an empty bet")
 		}
 	} else {
-		s = `REPLACE INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2)
+		sq = `REPLACE INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-
-		// This is an update of existing row,
-		// the coins value are (coins now + row's value) - new bet values
-		bm, err = GetUserBetById(bet.ID)
-		if err != nil {
-			return 0, err
-		}
 	}
 
 	err = ValidateInput(bet)
@@ -69,7 +117,7 @@ func AddBet(bet models.BetMatch) (int64, error) {
 
 	// We can have an existing bet with 0s passed, then we should remove the row from the db
 	if bet.Bet1+bet.Bet2+bet.BetX == 0 {
-		s = `DELETE FROM bets_games
+		s := `DELETE FROM bets_games
 				WHERE match_id = ? and user_id = ? AND outcome IS NULL
 				AND match_id NOT IN (SELECT gm.match_id from games_metadata gm WHERE gm.bets_off = 1)`
 		args := make([]interface{}, 0)
@@ -80,88 +128,11 @@ func AddBet(bet models.BetMatch) (int64, error) {
 		return lid, err
 	}
 
-	tx, err := models.DB.Begin()
-	if err != nil {
-		return 0, errors.New("error creating transaction")
-	}
-
-	res, err := tx.Exec(s, bet.ID, bet.UserId, bet.MatchId, bet.TournamentId, bet.Player1, bet.Player2, bet.Bet1, bet.BetX, bet.Bet2, bet.Odds1, bet.OddsX, bet.Odds2)
-	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return 0, err
-		}
-		return 0, err
-	}
-
-	lid, err := res.LastInsertId()
-	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return 0, err
-		}
-		return 0, err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return 0, err
-	}
-
-	var newBetCoins int
-
-	// if bet.ID == 0, this was a new bet, so we can safely substract the bet amount from coins
-	// coins = coins - (bet1 + betx + bet2)
-	if bet.ID == 0 {
-		newBetCoins = bet.Bet1 + bet.BetX + bet.Bet2
-		err := UpdateUserCoins(bet.UserId, bet.TournamentId, newBetCoins)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		newBetCoins := -(bm.Bet1 + bm.BetX + bm.Bet2) + (bet.Bet1 + bet.BetX + bet.Bet2)
-		err = UpdateUserCoins(bet.UserId, bet.TournamentId, newBetCoins)
-		if err != nil {
-			return 0, err
-		}
-	}
+	args := make([]interface{}, 0)
+	args = append(args, bet.ID, bet.UserId, bet.MatchId, bet.TournamentId, bet.Player1, bet.Player2, bet.Bet1, bet.BetX, bet.Bet2, bet.Odds1, bet.OddsX, bet.Odds2)
+	lid, err := RunTransaction(sq, args...)
 
 	return lid, err
-}
-
-func UpdateUserCoins(userId int, tournamentId int, bets int) error {
-	s := `UPDATE user_coins uc SET uc.coins = uc.coins - ?
-		  WHERE uc.user_id = ? AND uc.tournament_id = ?`
-
-	tx, err := models.DB.Begin()
-	if err != nil {
-		return errors.New("error creating transaction")
-	}
-
-	res, err := tx.Exec(s, bets, userId, tournamentId)
-	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return err
-		}
-		return err
-	}
-
-	_, err = res.LastInsertId()
-	if err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return err
-		}
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return err
 }
 
 func CheckBetOff(matchId int) int {
@@ -232,20 +203,19 @@ func ValidateInput(bm models.BetMatch) error {
 		return errors.New("bet are off for this match")
 	}
 
-	uab, err := GetUserActiveBets(bm)
+	utb, err := GetUserTournamentBalance(bm.UserId, bm.TournamentId, bm.ID)
 	if err != nil {
 		return errors.New("can't fetch coin data")
 	}
 
-	var newBets int
+	newBets := bm.Bet1 + bm.BetX + bm.Bet2
 
-	// how much can I bet?
-	availableBet := (uab.BetsTotal + uab.AvailableCoins) - (uab.BetsTotal - float32(uab.CurrentSavedBet))
-	newBets = bm.Bet1 + bm.BetX + bm.Bet2
-
-	// new bet amount can be greater than available amount
-	if float32(newBets) > availableBet {
+	// this is a new bet, we just need to check the current balance
+	coinsAvailable := utb.StartCoins - utb.CoinsBetsClosed - utb.CoinsBetsOpen + utb.CoinsWon
+	if float32(newBets) > coinsAvailable {
 		return errors.New("not enough coins")
+	} else {
+		return nil
 	}
 
 	return nil
