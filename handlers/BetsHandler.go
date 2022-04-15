@@ -131,6 +131,29 @@ func GetUserTournamentsGamesBets(writer http.ResponseWriter, request *http.Reque
 	json.NewEncoder(writer).Encode(bets)
 }
 
+func GetGameBets(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	gid, err := strconv.Atoi(params["gameId"])
+	if err != nil {
+		log.Println("Invalid game id")
+		http.Error(writer, "Invalid game id", http.StatusBadRequest)
+		return
+	}
+
+	SetHeaders(writer)
+	bets, err := data.GetGameBets(gid)
+	if err == sql.ErrNoRows {
+		json.NewEncoder(writer).Encode(new(models.BetMatch))
+		return
+	} else if err != nil {
+		log.Println("Unable to get bets", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(writer).Encode(bets)
+}
+
 // AddBet AddVisit will add the visit to the database
 func AddBet(writer http.ResponseWriter, reader *http.Request) {
 	var bet models.BetMatch
