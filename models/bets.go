@@ -26,6 +26,7 @@ type UserTournamentBalance struct {
 	CoinsBetsOpen         float32 `json:"coins_bets_open"`
 	CoinsBetsClosed       float32 `json:"coins_bets_closed"`
 	CoinsWon              float32 `json:"coins_won"`
+	PotentialWinnings     float32 `json:"potential_winnings"`
 	TournamentCoinsOpen   float32 `json:"tournament_coins_open"`
 	TournamentCoinsClosed float32 `json:"tournament_coins_closed"`
 	StartCoins            float32 `json:"start_coins"`

@@ -69,6 +69,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 	   		sum(bgo.bet1+bgo.betx+bgo.bet2) as openBets,
 	   		COALESCE(coins, 0) as closedBets,
 	   		COALESCE(coinsWon, 0) as coinsWon,
+		    pw.potentialWinnings,
 		       1000, 1000, 1000
 		from bets_games bgo
 		left join (
@@ -82,6 +83,18 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 			from bets_games bgf where outcome is not null
 			group by user_id
 			) bgf on bgf.uid = bgo.user_id and bgf.tid = bgo.tournament_id
+		left join (
+			select bg.user_id, bg.tournament_id, round(GREATEST(
+			sum(
+				if(bg.bet1 > 0, bg.bet1*bg.odds1 - (bg.bet1+bg.bet2), 0)
+			),
+			sum(
+				if(bg.bet2 > 0, bg.bet2*bg.odds2 - (bg.bet1+bg.bet2), 0)
+				)
+			), 2) as potentialWinnings
+		from bets_games bg
+		group by bg.user_id
+			) pw on pw.user_id = bgo.user_id and pw.tournament_id = bgo.tournament_id		    
 		join users u on bgo.user_id = u.id
 		where bgo.tournament_id = ? and bgo.outcome is null
 		group by bgo.user_id`, tournamentId)
@@ -95,7 +108,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 	for rows.Next() {
 		b := new(models.UserTournamentBalance)
 		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
-			&b.BetsPlaced, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon,
+			&b.BetsPlaced, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
 			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
 		b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
 		if err != nil {
