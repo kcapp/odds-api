@@ -45,12 +45,22 @@ func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*mo
 
 	var startCoins float32 = 1000
 
+	bc := 0
+	if len(tb) > 0 {
+		for _, b := range tb {
+			if b.Outcome != nil {
+				bc++
+			}
+		}
+	}
+
 	utb := models.UserTournamentBalance{
 		UserId:                u.ID,
 		FirstName:             u.FirstName,
 		LastName:              u.LastName,
 		TournamentId:          tournamentId,
 		BetsPlaced:            len(tb),
+		BetsClosed:            bc,
 		CoinsBetsOpen:         uab.Coins,
 		CoinsBetsClosed:       uca.Coins,
 		CoinsWon:              ucw.Coins,
