@@ -94,6 +94,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 				)
 			), 2) as potentialWinnings
 		from bets_games bg
+			where bg.outcome is null
 		group by bg.user_id
 			) pw on pw.user_id = bgo.user_id and pw.tournament_id = bgo.tournament_id		    
 		join users u on bgo.user_id = u.id
