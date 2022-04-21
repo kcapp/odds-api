@@ -85,17 +85,12 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 			group by user_id
 			) bgf on bgf.uid = bgo.user_id and bgf.tid = bgo.tournament_id
 		left join (
-			select bg.user_id, bg.tournament_id, round(GREATEST(
-			sum(
-				if(bg.bet1 > 0, bg.bet1*bg.odds1 - (bg.bet1+bg.bet2), 0)
-			),
-			sum(
-				if(bg.bet2 > 0, bg.bet2*bg.odds2 - (bg.bet1+bg.bet2), 0)
-				)
-			), 2) as potentialWinnings
-		from bets_games bg
-			where bg.outcome is null
-		group by bg.user_id
+			select bg.user_id, bg.tournament_id, match_id, bet1, odds1, bet2, odds2,
+			ROUND(SUM(GREATEST(if(bg.bet1 > 0, bg.bet1*bg.odds1 - (bg.bet1+bg.bet2), 0),
+			   if(bg.bet2 > 0, bg.bet2*bg.odds2 - (bg.bet1+bg.bet2), 0))), 2) as potentialWinnings
+			from bets_games bg
+				where bg.outcome is null
+			group by bg.user_id
 			) pw on pw.user_id = bgo.user_id and pw.tournament_id = bgo.tournament_id		    
 		join users u on bgo.user_id = u.id
 		where bgo.tournament_id = ? and bgo.outcome is null

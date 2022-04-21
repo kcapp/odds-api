@@ -40,7 +40,8 @@ type SortBalanceByPotentialCoins []*UserTournamentBalance
 
 func (a SortBalanceByPotentialCoins) Len() int { return len(a) }
 func (a SortBalanceByPotentialCoins) Less(i, j int) bool {
-	return (a[i].CoinsAvailable + a[i].PotentialWinnings) > (a[j].CoinsAvailable + a[j].PotentialWinnings)
+	return (a[i].CoinsAvailable + a[i].CoinsBetsOpen + a[i].PotentialWinnings) >
+		(a[j].CoinsAvailable + a[j].CoinsBetsOpen + a[j].PotentialWinnings)
 }
 func (a SortBalanceByPotentialCoins) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
