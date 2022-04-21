@@ -36,6 +36,13 @@ type UserTournamentBalance struct {
 
 type SortBalanceByCoinsWon []*UserTournamentBalance
 type SortBalanceByCoinsAvailable []*UserTournamentBalance
+type SortBalanceByPotentialCoins []*UserTournamentBalance
+
+func (a SortBalanceByPotentialCoins) Len() int { return len(a) }
+func (a SortBalanceByPotentialCoins) Less(i, j int) bool {
+	return (a[i].CoinsAvailable + a[i].PotentialWinnings) > (a[j].CoinsAvailable + a[j].PotentialWinnings)
+}
+func (a SortBalanceByPotentialCoins) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 func (a SortBalanceByCoinsWon) Len() int           { return len(a) }
 func (a SortBalanceByCoinsWon) Less(i, j int) bool { return a[i].CoinsWon > a[j].CoinsWon }
