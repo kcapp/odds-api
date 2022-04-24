@@ -30,6 +30,7 @@ func main() {
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/balance", handlers.GetUserTournamentBalance).Methods("GET")
 	// Bets
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/bets", handlers.GetUserTournamentsGamesBets).Methods("GET")
+	router.HandleFunc("/user/{userId}/bets", handlers.GetUserGamesBets).Methods("GET")
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/coins/open", handlers.GetUserTournamentsCoinsOpen).Methods("GET")
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/coins/closed", handlers.GetUserTournamentsCoinsClosed).Methods("GET")
 	router.HandleFunc("/user/{userId}/tournament/{tournamentId}/coins/won", handlers.GetUserTournamentsCoinsWon).Methods("GET")

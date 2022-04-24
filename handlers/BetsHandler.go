@@ -101,6 +101,29 @@ func GetUserTournamentsCoinsWon(writer http.ResponseWriter, request *http.Reques
 	json.NewEncoder(writer).Encode(coins)
 }
 
+func GetUserGamesBets(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	uid, err := strconv.Atoi(params["userId"])
+	if err != nil {
+		log.Println("Invalid user")
+		http.Error(writer, "Invalid user", http.StatusBadRequest)
+		return
+	}
+
+	SetHeaders(writer)
+	bets, err := data.GetUserGamesBets(uid)
+	if err == sql.ErrNoRows {
+		json.NewEncoder(writer).Encode(new(models.BetMatch))
+		return
+	} else if err != nil {
+		log.Println("Unable to get bets", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(writer).Encode(bets)
+}
+
 func GetUserTournamentsGamesBets(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	uid, err := strconv.Atoi(params["userId"])
