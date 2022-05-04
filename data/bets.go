@@ -198,7 +198,7 @@ func GetGameBets(gameId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT
 			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome, 
-			       bm.odds1, bm.oddsx, bm.odds2,
+			       bm.odds1, bm.oddsx, bm.odds2, bm.player1, bm.player2,
 			       COALESCE(gm.bets_off, 0) as bets_off
 			FROM bets_games bm
 			LEFT JOIN games_metadata gm on bm.match_id = gm.match_id
@@ -214,7 +214,7 @@ func GetGameBets(gameId int) ([]*models.BetMatch, error) {
 		b := new(models.BetMatch)
 		err := rows.Scan(&b.ID, &b.UserId, &b.MatchId, &b.TournamentId,
 			&b.Bet1, &b.BetX, &b.Bet2, &b.Outcome,
-			&b.Odds1, &b.OddsX, &b.Odds2,
+			&b.Odds1, &b.OddsX, &b.Odds2, &b.Player1, &b.Player2,
 			&b.BetsOff)
 		if err != nil {
 			return nil, err

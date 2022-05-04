@@ -33,21 +33,6 @@ func FinishGame(gf models.GameFinish) (int64, error) {
 		return 0, errors.New("error setting outcome")
 	}
 
-	// update user coins
-	s = `update user_coins uc
-			join (
-					select bg.user_id,
-						   ROUND((if(bg.player1 = bg.outcome, bet1 * odds1, 0) + if(bg.player2 = bg.outcome, bet2 * odds2, 0)),
-								 2) as coins
-					from bets_games bg
-					where bg.match_id = ?
-				) bg on bg.user_id = uc.user_id
-			set uc.coins = ROUND((uc.coins + bg.coins), 2)`
-
-	args = make([]interface{}, 0)
-	args = append(args, gf.MatchId)
-	lid, err = RunTransaction(s, args...)
-
 	if err != nil {
 		return 0, errors.New("error updating coins")
 	}
