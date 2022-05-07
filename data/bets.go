@@ -123,6 +123,45 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 	return balances, nil
 }
 
+func GetTournamentOutcomes(tournamentId int) ([]*models.TournamentOutcome, error) {
+	rows, err := models.DB.Query(`select o.id as outcomeId,
+			   o.tournament_id as tournamentId,
+			   m.id as marketId,
+			   m.name as marketName,
+			   m.type_id as marketTypeId,
+			   mt.name as marketTypeName,
+			   o.value as outcomeValue, o.odds1, o.odds2, o.oddsx,
+			   concat(u.first_name, ' ', u.last_name) as playerName
+		from outcomes o
+		join markets m on o.market_id = m.id
+		join market_types mt on m.type_id = mt.id
+		left join users u on u.id = o.value and m.type_id IN (2, 3)
+		where o.tournament_id = ?`, tournamentId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	outcomes := make([]*models.TournamentOutcome, 0)
+	for rows.Next() {
+		b := new(models.TournamentOutcome)
+		err := rows.Scan(&b.ID, &b.TournamentId, &b.MarketId, &b.MarketName, &b.MarketTypeId, &b.MarketTypeName,
+			&b.OutcomeValue, &b.Odds1, &b.Odds2, &b.OddsX, &b.PlayerName)
+		if err != nil {
+			return nil, err
+		}
+
+		outcomes = append(outcomes, b)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return outcomes, nil
+}
+
 func GetUserGamesBets(userId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT

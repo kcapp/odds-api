@@ -1,5 +1,24 @@
 package models
 
+type Market struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type TournamentOutcome struct {
+	ID             int     `json:"id"`
+	TournamentId   int     `json:"tournament_id"`
+	MarketId       int     `json:"market_id"`
+	MarketName     string  `json:"market_name"`
+	MarketTypeId   int     `json:"market_type_id"`
+	MarketTypeName string  `json:"market_type_name"`
+	OutcomeValue   float64 `json:"outcome_value"`
+	Odds1          float64 `json:"odds_1"`
+	Odds2          float64 `json:"odds_2"`
+	OddsX          float64 `json:"odds_x"`
+	PlayerName     *string `json:"player_name"`
+}
+
 type BetMatch struct {
 	ID           int     `json:"id"`
 	UserId       int     `json:"user_id"`
