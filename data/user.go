@@ -43,6 +43,10 @@ func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*mo
 	ucw, _ := GetUserTournamentCoinsWon(userId, tournamentId)
 	tb, _ := GetUserTournamentGamesBets(userId, tournamentId)
 
+	uabt, _ := GetUserTournamentTournamentCoinsOpen(userId, tournamentId, skipGameId)
+	ucat, _ := GetUserTournamentTournamentCoinsClosed(userId, tournamentId)
+	ucwt, _ := GetUserTournamentTournamentCoinsWon(userId, tournamentId)
+
 	var startCoins float32 = 1000
 
 	bc := 0
@@ -64,8 +68,9 @@ func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*mo
 		CoinsBetsOpen:         uab.Coins,
 		CoinsBetsClosed:       uca.Coins,
 		CoinsWon:              ucw.Coins,
-		TournamentCoinsOpen:   1000,
-		TournamentCoinsClosed: 1000,
+		TournamentCoinsOpen:   uabt.Coins,
+		TournamentCoinsClosed: ucat.Coins,
+		TournamentCoinsWon:    ucwt.Coins,
 		StartCoins:            startCoins,
 		CoinsAvailable:        startCoins - uab.Coins - uca.Coins + ucw.Coins,
 	}

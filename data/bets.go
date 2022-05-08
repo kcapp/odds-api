@@ -31,6 +31,46 @@ func GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId int) (*models.C
 	return cb, nil
 }
 
+func GetUserTournamentTournamentCoinsOpen(userId, tournamentId, skipOutcomeId int) (*models.CoinBalance, error) {
+	var s string
+	cb := new(models.CoinBalance)
+
+	if skipOutcomeId != 0 {
+		s = `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
+			from bets_tournament bg
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null AND bg.id != ?`
+		err := models.DB.QueryRow(s, userId, tournamentId, skipOutcomeId).Scan(&cb.Coins)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		s = `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
+			from bets_tournament bg
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null`
+		err := models.DB.QueryRow(s, userId, tournamentId).Scan(&cb.Coins)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cb, nil
+}
+
+func GetUserTournamentTournamentCoinsClosed(userId, tournamentId int) (*models.CoinBalance, error) {
+	s := `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
+			from bets_tournament bg
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is not null`
+
+	cb := new(models.CoinBalance)
+	err := models.DB.QueryRow(s, userId, tournamentId).
+		Scan(&cb.Coins)
+	if err != nil {
+		return nil, err
+	}
+
+	return cb, nil
+}
+
 func GetUserTournamentCoinsClosed(userId, tournamentId int) (*models.CoinBalance, error) {
 	s := `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
 			from bets_games bg
@@ -51,6 +91,35 @@ func GetUserTournamentCoinsWon(userId, tournamentId int) (*models.CoinBalance, e
                 if(bgf.player2 = bgf.outcome, bet2 * odds2, 0)), 2)), 0) as coins
 				from bets_games bgf
 				where bgf.user_id = ? and bgf.tournament_id = ? and bgf.outcome is not null`
+
+	cb := new(models.CoinBalance)
+	err := models.DB.QueryRow(s, userId, tournamentId).
+		Scan(&cb.Coins)
+	if err != nil {
+		return nil, err
+	}
+
+	return cb, nil
+}
+
+func GetUserTournamentTournamentCoinsWon(userId, tournamentId int) (*models.CoinBalance, error) {
+	s := `select
+				   coalesce(sum(coalesce(if (bt.outcome > ou.value, ou.odds1 * bt.bet1, ou.odds2 * bet2),
+				   if (bt.outcome = op.value, op.oddsx * bt.betx, 0))), 0) as win
+			from bets_tournament bt
+			left join (select ou.id, ou.tournament_id,
+						 ou.odds1, ou.oddsx, ou.odds2, m.type_id, ou.value
+				  from outcomes ou
+				  join markets m on ou.market_id = m.id
+				  where m.type_id = 1
+				  ) ou on ou.id = bt.outcome_id and ou.tournament_id = bt.tournament_id
+			left join (select op.id, op.tournament_id,
+						 op.odds1, op.oddsx, op.odds2, m.type_id, op.value
+				  from outcomes op
+				  join markets m on op.market_id = m.id
+				  where m.type_id IN (2, 3)
+				  ) op on op.id = bt.outcome_id and op.tournament_id = bt.tournament_id
+			where bt.user_id = ? and bt.tournament_id = ? and bt.outcome is not null`
 
 	cb := new(models.CoinBalance)
 	err := models.DB.QueryRow(s, userId, tournamentId).
@@ -232,6 +301,40 @@ func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, e
 	return bets, nil
 }
 
+func GetUserTournamentTournamentsBets(userId, tournamentId int) ([]*models.BetTournament, error) {
+	rows, err := models.DB.Query(`
+			SELECT
+			bt.id, bt.user_id, bt.tournament_id, bt.outcome_id, bt.bet1, bt.betx, bt.bet2, bt.outcome,
+			o.value, o.odds1, o.odds2, o.oddsx
+			FROM bets_tournament bt
+			join outcomes o on bt.outcome_id = o.id
+			WHERE bt.user_id = ? and bt.tournament_id = ?`, userId, tournamentId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	bets := make([]*models.BetTournament, 0)
+	for rows.Next() {
+		b := new(models.BetTournament)
+		err := rows.Scan(&b.ID, &b.UserId, &b.TournamentId, &b.OutcomeId,
+			&b.Bet1, &b.BetX, &b.Bet2, &b.Outcome,
+			&b.OutcomeValue, &b.Odds1, &b.Odds2, &b.OddsX)
+		if err != nil {
+			return nil, err
+		}
+
+		bets = append(bets, b)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return bets, nil
+}
+
 func GetGameBets(gameId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT
@@ -310,6 +413,64 @@ func AddBet(bet models.BetMatch) (int64, error) {
 	return lid, err
 }
 
+func deleteTournamentBet(bet models.BetOutcome) (int64, error) {
+	s := `DELETE FROM bets_tournament
+				WHERE outcome_id = ? and user_id = ? AND outcome IS NULL
+				AND tournament_id NOT IN (SELECT tm.tournament_id from tournaments_metadata tm WHERE tm.bets_off = 1)`
+	args := make([]interface{}, 0)
+	args = append(args, bet.OutcomeId, bet.UserId)
+
+	lid, err := RunTransaction(s, args...)
+
+	return lid, err
+}
+
+func insertTournamentBet(bet models.BetOutcome) (int64, error) {
+	sq := `INSERT INTO bets_tournament (user_id, outcome_id, tournament_id, bet1, betx, bet2) 
+			VALUES (?, ?, ?, ?, ?, ?)`
+
+	args := make([]interface{}, 0)
+	args = append(args, bet.UserId, bet.OutcomeId, bet.TournamentId, bet.Bet1, bet.BetX, bet.Bet2)
+	lid, err := RunTransaction(sq, args...)
+
+	return lid, err
+}
+
+func AddTournamentBet(bet models.BetOutcome) (int64, error) {
+	var err error
+
+	err = ValidateTournamentBetInput(bet)
+	if err != nil {
+		return 0, err
+	}
+
+	// We can have an existing bet with 0s passed, then we should remove the row from the db
+	if bet.Bet1+bet.Bet2+bet.BetX == 0 {
+		lid, err := deleteTournamentBet(bet)
+		return lid, err
+	}
+
+	if bet.ID == 0 {
+		// We are placing new bet, but we might be passing 0s only
+		if bet.Bet1+bet.Bet2+bet.BetX == 0 {
+			return 0, errors.New("can't place an empty bet")
+		}
+		_, err := insertTournamentBet(bet)
+
+		return int64(bet.OutcomeId), err
+	} else {
+
+		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ? 
+			WHERE outcome_id = ? and user_id = ? and tournament_id = ?`
+
+		args := make([]interface{}, 0)
+		args = append(args, bet.Bet1, bet.BetX, bet.Bet2, bet.OutcomeId, bet.UserId, bet.TournamentId)
+		_, err := RunTransaction(sq, args...)
+
+		return int64(bet.OutcomeId), err
+	}
+}
+
 func CheckBetOff(matchId int) int {
 	var bo int
 	_ = models.DB.QueryRow(`
@@ -370,6 +531,30 @@ func GetUserBetById(betId int) (*models.BetMatch, error) {
 	}
 
 	return bm, nil
+}
+
+func ValidateTournamentBetInput(bt models.BetOutcome) error {
+	betsOff := CheckBetOff(bt.OutcomeId)
+	if betsOff == 1 {
+		return errors.New("bet are off for this match")
+	}
+
+	utb, err := GetUserTournamentBalance(bt.UserId, bt.TournamentId, bt.ID)
+	if err != nil {
+		return errors.New("can't fetch coin data")
+	}
+
+	newBets := bt.Bet1 + bt.BetX + bt.Bet2
+
+	// this is a new bet, we just need to check the current balance
+	coinsAvailable := utb.StartCoins - utb.TournamentCoinsClosed - utb.TournamentCoinsOpen + utb.TournamentCoinsWon
+	if float32(newBets) > coinsAvailable {
+		return errors.New("not enough coins")
+	} else {
+		return nil
+	}
+
+	return nil
 }
 
 func ValidateInput(bm models.BetMatch) error {

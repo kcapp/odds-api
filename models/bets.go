@@ -36,6 +36,31 @@ type BetMatch struct {
 	BetsOff      int     `json:"bets_off"`
 }
 
+type BetTournament struct {
+	ID           int      `json:"id"`
+	UserId       int      `json:"user_id"`
+	TournamentId int      `json:"tournament_id"`
+	OutcomeId    int      `json:"outcome_id"`
+	Bet1         int      `json:"bet_1"`
+	BetX         int      `json:"bet_x"`
+	Bet2         int      `json:"bet_2"`
+	Outcome      *float64 `json:"outcome"` // final outcome
+	OutcomeValue float64  `json:"outcome_value"`
+	Odds1        float64  `json:"odds_1"`
+	OddsX        float64  `json:"odds_x"`
+	Odds2        float64  `json:"odds_2"`
+}
+
+type BetOutcome struct {
+	ID           int `json:"id"`
+	UserId       int `json:"user_id"`
+	TournamentId int `json:"tournament_id"`
+	OutcomeId    int `json:"outcome_id"`
+	Bet1         int `json:"bet_1"`
+	BetX         int `json:"bet_x"`
+	Bet2         int `json:"bet_2"`
+}
+
 type UserTournamentBalance struct {
 	UserId                int     `json:"user_id"`
 	FirstName             string  `json:"first_name"`
@@ -49,6 +74,7 @@ type UserTournamentBalance struct {
 	PotentialWinnings     float32 `json:"potential_winnings"`
 	TournamentCoinsOpen   float32 `json:"tournament_coins_open"`
 	TournamentCoinsClosed float32 `json:"tournament_coins_closed"`
+	TournamentCoinsWon    float32 `json:"tournament_coins_won"`
 	StartCoins            float32 `json:"start_coins"`
 	CoinsAvailable        float32 `json:"coins_available"`
 }
