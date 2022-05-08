@@ -49,6 +49,8 @@ type BetTournament struct {
 	Odds1        float64  `json:"odds_1"`
 	OddsX        float64  `json:"odds_x"`
 	Odds2        float64  `json:"odds_2"`
+	MarketId     int      `json:"market_id"`
+	MarketTypeId int      `json:"market_type_id"`
 }
 
 type BetOutcome struct {

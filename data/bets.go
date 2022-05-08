@@ -305,9 +305,10 @@ func GetUserTournamentTournamentsBets(userId, tournamentId int) ([]*models.BetTo
 	rows, err := models.DB.Query(`
 			SELECT
 			bt.id, bt.user_id, bt.tournament_id, bt.outcome_id, bt.bet1, bt.betx, bt.bet2, bt.outcome,
-			o.value, o.odds1, o.odds2, o.oddsx
+			o.value, o.odds1, o.odds2, o.oddsx, m.id as market_id, m.type_id as market_type_id
 			FROM bets_tournament bt
 			join outcomes o on bt.outcome_id = o.id
+			join markets m on o.market_id = m.id
 			WHERE bt.user_id = ? and bt.tournament_id = ?`, userId, tournamentId)
 
 	if err != nil {
@@ -320,7 +321,7 @@ func GetUserTournamentTournamentsBets(userId, tournamentId int) ([]*models.BetTo
 		b := new(models.BetTournament)
 		err := rows.Scan(&b.ID, &b.UserId, &b.TournamentId, &b.OutcomeId,
 			&b.Bet1, &b.BetX, &b.Bet2, &b.Outcome,
-			&b.OutcomeValue, &b.Odds1, &b.Odds2, &b.OddsX)
+			&b.OutcomeValue, &b.Odds1, &b.Odds2, &b.OddsX, &b.MarketId, &b.MarketTypeId)
 		if err != nil {
 			return nil, err
 		}
@@ -455,19 +456,18 @@ func AddTournamentBet(bet models.BetOutcome) (int64, error) {
 		if bet.Bet1+bet.Bet2+bet.BetX == 0 {
 			return 0, errors.New("can't place an empty bet")
 		}
-		_, err := insertTournamentBet(bet)
+		lid, err := insertTournamentBet(bet)
 
-		return int64(bet.OutcomeId), err
+		return lid, err
 	} else {
 
-		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ? 
-			WHERE outcome_id = ? and user_id = ? and tournament_id = ?`
+		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ?, outcome_id = ? WHERE id = ?`
 
 		args := make([]interface{}, 0)
-		args = append(args, bet.Bet1, bet.BetX, bet.Bet2, bet.OutcomeId, bet.UserId, bet.TournamentId)
+		args = append(args, bet.Bet1, bet.BetX, bet.Bet2, bet.OutcomeId, bet.ID)
 		_, err := RunTransaction(sq, args...)
 
-		return int64(bet.OutcomeId), err
+		return int64(bet.ID), err
 	}
 }
 
