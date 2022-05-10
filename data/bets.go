@@ -192,6 +192,53 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 	return balances, nil
 }
 
+func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournamentBalance, error) {
+	s := `
+		select bg.user_id, u.first_name, u.last_name, bg.tournament_id,
+			   (coalesce(bgo.numBetsOpen, 0) + coalesce(bgc.numBetsClosed, 0)) as numBets,
+			   coalesce(bgc.numBetsClosed, 0) as numBetsClosed,
+			   coalesce(bgo.coinsOpenBets, 0) as coinsOpenBets,
+			   coalesce(bgc.coinsClosedBets, 0 ) as coinsClosedBets,
+			   coalesce(bgc.coinsWon, 0) as coinsWon,
+			   coalesce(bgo.potentialWinnings, 0) as potentialWinnings, 
+			   1000, 1000, 1000
+		from bets_games bg
+				 left join (select bgo.user_id, count(bgo.user_id) as numBetsOpen, bgo.tournament_id,
+							bgo.bet1, bgo.betx, bgo.bet2,
+							sum(bgo.bet1 + bgo.betx + bgo.bet2) as coinsOpenBets,
+							ROUND(SUM(GREATEST(if(bgo.bet1 > 0, bgo.bet1 * bgo.odds1 - (bgo.bet1 + bgo.bet2), 0),
+											  if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2), 0))),
+								2) as potentialWinnings
+							from bets_games bgo
+							where bgo.outcome IS NULL
+							group by bgo.user_id) bgo
+						   on bg.user_id = bgo.user_id and bg.tournament_id = bgo.tournament_id
+				 left join (select bgc.user_id, count(bgc.user_id) as numBetsClosed, bgc.tournament_id,
+							sum(bgc.bet1 + bgc.betx + bgc.bet2) as coinsClosedBets,
+							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1, if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2, 0))), 2) as rawCoinsWon,
+							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1, if(bgc.player2 = bgc.outcome, bet2 * odds2, 0))), 2) as coinsWon
+							from bets_games bgc
+							where bgc.outcome IS NOT NULL
+							group by bgc.user_id) bgc
+						   on bg.user_id = bgc.user_id and bg.tournament_id = bgc.tournament_id
+				 join users u on bg.user_id = u.id
+		where bg.tournament_id = ? and bg.user_id = ?
+		group by bg.user_id`
+
+	b := new(models.UserTournamentBalance)
+	err := models.DB.QueryRow(s, tournamentId, userId).
+		Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
+			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
+			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
+	b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
+
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
 func GetTournamentOutcomes(tournamentId int) ([]*models.TournamentOutcome, error) {
 	rows, err := models.DB.Query(`select o.id as outcomeId,
 			   o.tournament_id as tournamentId,

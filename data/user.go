@@ -37,45 +37,17 @@ func GetUserByLogin(login string) (*models.User, error) {
 }
 
 func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*models.UserTournamentBalance, error) {
-	u, _ := GetUserById(userId)
-	uab, _ := GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId)
-	uca, _ := GetUserTournamentCoinsClosed(userId, tournamentId)
-	ucw, _ := GetUserTournamentCoinsWon(userId, tournamentId)
-	tb, _ := GetUserTournamentGamesBets(userId, tournamentId)
+	utb, _ := GetUserTournamentRanking(tournamentId, userId)
 
 	uabt, _ := GetUserTournamentTournamentCoinsOpen(userId, tournamentId, skipGameId)
 	ucat, _ := GetUserTournamentTournamentCoinsClosed(userId, tournamentId)
 	ucwt, _ := GetUserTournamentTournamentCoinsWon(userId, tournamentId)
 
-	var startCoins float32 = 1000
+	utb.TournamentCoinsOpen = uabt.Coins
+	utb.TournamentCoinsClosed = ucat.Coins
+	utb.TournamentCoinsWon = ucwt.Coins
 
-	bc := 0
-	if len(tb) > 0 {
-		for _, b := range tb {
-			if b.Outcome != nil {
-				bc++
-			}
-		}
-	}
-
-	utb := models.UserTournamentBalance{
-		UserId:                u.ID,
-		FirstName:             u.FirstName,
-		LastName:              u.LastName,
-		TournamentId:          tournamentId,
-		BetsPlaced:            len(tb),
-		BetsClosed:            bc,
-		CoinsBetsOpen:         uab.Coins,
-		CoinsBetsClosed:       uca.Coins,
-		CoinsWon:              ucw.Coins,
-		TournamentCoinsOpen:   uabt.Coins,
-		TournamentCoinsClosed: ucat.Coins,
-		TournamentCoinsWon:    ucwt.Coins,
-		StartCoins:            startCoins,
-		CoinsAvailable:        startCoins - uab.Coins - uca.Coins + ucw.Coins,
-	}
-
-	return &utb, nil
+	return utb, nil
 }
 
 func GenerateHashPassword(password string) (string, error) {
