@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/kcapp/odds-api/models"
 	"sort"
@@ -225,18 +226,49 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 		where bg.tournament_id = ? and bg.user_id = ?
 		group by bg.user_id`
 
-	b := new(models.UserTournamentBalance)
+	b := models.UserTournamentBalance{
+		UserId:                userId,
+		FirstName:             "",
+		LastName:              "",
+		TournamentId:          tournamentId,
+		BetsPlaced:            0,
+		BetsClosed:            0,
+		CoinsBetsOpen:         0,
+		CoinsBetsClosed:       0,
+		CoinsWon:              0,
+		PotentialWinnings:     0,
+		TournamentCoinsOpen:   0,
+		TournamentCoinsClosed: 0,
+		TournamentCoinsWon:    0,
+		StartCoins:            0,
+		CoinsAvailable:        0,
+	}
+
 	err := models.DB.QueryRow(s, tournamentId, userId).
 		Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
 			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
 			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
 	b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
 
+	if err == sql.ErrNoRows {
+		u, err := GetUserById(userId)
+
+		if err != nil {
+			return nil, err
+		}
+
+		b.FirstName = u.FirstName
+		b.LastName = u.LastName
+		b.StartCoins = 1000
+		b.CoinsAvailable = 1000
+		return &b, err
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	return b, nil
+	return &b, nil
 }
 
 func GetTournamentOutcomes(tournamentId int) ([]*models.TournamentOutcome, error) {
