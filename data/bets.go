@@ -162,7 +162,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 						   on bg.user_id = bgc.user_id and bg.tournament_id = bgc.tournament_id
 				 join users u on bg.user_id = u.id
 		where bg.tournament_id = ?
-		group by bgo.user_id`, tournamentId)
+		group by bg.user_id`, tournamentId)
 
 	if err != nil {
 		return nil, err
