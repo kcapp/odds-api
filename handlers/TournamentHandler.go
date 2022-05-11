@@ -35,6 +35,30 @@ func GetTournamentRanking(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(ranking)
 }
 
+func GetTournamentGameRanking(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+
+	tid, err := strconv.Atoi(params["tournamentId"])
+	if err != nil {
+		log.Println("Unable to get tournament id", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	SetHeaders(writer)
+	ranking, err := data.GetTournamentGameRanking(tid)
+	if err == sql.ErrNoRows {
+		json.NewEncoder(writer).Encode(new(models.BetMatch))
+		return
+	} else if err != nil {
+		log.Println("Unable to get bets", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(writer).Encode(ranking)
+}
+
 func StartTournament(writer http.ResponseWriter, reader *http.Request) {
 	params := mux.Vars(reader)
 	tournamentId, err := strconv.Atoi(params["tournamentId"])

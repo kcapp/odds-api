@@ -132,7 +132,7 @@ func GetUserTournamentTournamentCoinsWon(userId, tournamentId int) (*models.Coin
 	return cb, nil
 }
 
-func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
+func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
 	rows, err := models.DB.Query(`
 		select bg.user_id, u.first_name, u.last_name, bg.tournament_id,
 			   (coalesce(bgo.numBetsOpen, 0) + coalesce(bgc.numBetsClosed, 0)) as numBets,
@@ -177,6 +177,101 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
 			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
 		b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
+		if err != nil {
+			return nil, err
+		}
+
+		balances = append(balances, b)
+	}
+
+	sort.Sort(models.SortBalanceByPotentialCoins(balances))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return balances, nil
+}
+
+func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
+	rows, err := models.DB.Query(`
+		select bt.user_id, u.first_name, u.last_name, bt.tournament_id,
+        (coalesce(bto1.numBetsOpen, 0) + coalesce(bto2.numBetsOpen, 0)) as numBets,
+ 		(coalesce(btc1.numBetsClosed, 0) + coalesce(btc2.numBetsClosed, 0)) as numBetsClosed,
+ 		0,0,0,
+        coalesce(bto1.totalPotential, 0) + coalesce (bto2.futuresPropsPotential, 0) as potentialWinnings,
+        coalesce(bto1.coinsOpenBets, 0) + coalesce(bto2.coinsOpenBets, 0) as coinsOpenBets,
+ 		coalesce(btc1.coinsClosedBets, 0) + coalesce(btc2.coinsClosedBets, 0) as coinsClosedBets,
+	    coalesce(btc1.coinsWon, 0) + coalesce(btc2.coinsWon, 0) as coinsWon,
+	    1000
+		from bets_tournament bt
+            left join
+            (select bto.user_id, count(bto.user_id) as numBetsOpen, bto.tournament_id,
+                   bto.bet1, bto.betx, bto.bet2,
+                   sum(bto.bet1 + bto.betx + bto.bet2) as coinsOpenBets,
+                   ROUND(SUM(GREATEST(if(bto.bet1 > 0, bto.bet1 * o.odds1 - (bto.bet1 + bto.bet2), 0),
+                                                          if(bto.bet2 > 0, bto.bet2 * o.odds2 - (bto.bet1 + bto.bet2), 0))),
+                                            2)
+                        as totalPotential
+            from bets_tournament bto
+            join outcomes o on bto.outcome_id = o.id
+            join markets m on o.market_id = m.id
+            where bto.outcome is null
+            and m.type_id = 1
+            group by bto.user_id
+            ) bto1 on bt.user_id = bto1.user_id and bt.tournament_id = bto1.tournament_id
+            left join
+            (select bto.user_id, count(bto.user_id) as numBetsOpen, bto.tournament_id,
+                   bto.bet1, bto.betx, bto.bet2,
+                   sum(bto.bet1 + bto.betx + bto.bet2) as coinsOpenBets,
+                   ROUND(SUM(if(bto.betx > 0, bto.betx * o.oddsx - bto.betx, 0)), 2)
+                        as futuresPropsPotential
+            from bets_tournament bto
+            join outcomes o on bto.outcome_id = o.id
+            join markets m on o.market_id = m.id
+            where bto.outcome is null
+            and m.type_id in (2,3)
+            group by bto.user_id) bto2 on bt.user_id = bto2.user_id and bt.tournament_id = bto2.tournament_id
+		    # closed bets for futures
+            left join (select bto.user_id, count(bto.user_id) as numBetsClosed, bto.tournament_id,
+                   bto.bet1, bto.betx, bto.bet2,
+                   sum(bto.bet1 + bto.betx + bto.bet2) as coinsClosedBets,
+                   sum(if(bto.outcome > o.value, bto.bet1 * o.odds1 - (bto.bet1 + bto.bet2), if(bto.outcome < o.value, bto.bet2 * o.odds2 - (bto.bet1 + bto.bet2), 0)))
+                        as coinsWon
+            from bets_tournament bto
+            join outcomes o on bto.outcome_id = o.id
+            join markets m on o.market_id = m.id
+            where bto.outcome is not null
+            and m.type_id = 1
+            group by bto.user_id
+            ) btc1 on bt.user_id = btc1.user_id and bt.tournament_id = btc1.tournament_id
+            left join (select bto.user_id, count(bto.user_id) as numBetsClosed, bto.tournament_id,
+                   bto.bet1, bto.betx, bto.bet2,
+                   sum(bto.bet1 + bto.betx + bto.bet2) as coinsClosedBets,
+                   if(bto.outcome = o.value, bto.betx * o.oddsx - (bto.betx), 0) as coinsWon
+            from bets_tournament bto
+            join outcomes o on bto.outcome_id = o.id
+            join markets m on o.market_id = m.id
+            where bto.outcome is not null
+            and m.type_id IN (2,3)
+            group by bto.user_id
+            ) btc2 on bt.user_id = btc2.user_id and bt.tournament_id = btc2.tournament_id
+						 join users u on bt.user_id = u.id
+		where bt.tournament_id = ?
+		group by bt.user_id`, tournamentId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	balances := make([]*models.UserTournamentBalance, 0)
+	for rows.Next() {
+		b := new(models.UserTournamentBalance)
+		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
+			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
+			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.TournamentCoinsWon, &b.StartCoins)
+		b.CoinsAvailable = b.StartCoins - b.TournamentCoinsOpen - b.TournamentCoinsClosed + b.CoinsWon
 		if err != nil {
 			return nil, err
 		}
