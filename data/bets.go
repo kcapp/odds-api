@@ -307,7 +307,7 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 								2) as potentialWinnings
 							from bets_games bgo
 							where bgo.outcome IS NULL
-							group by bgo.user_id) bgo
+							group by bgo.user_id, bgo.tournament_id) bgo
 						   on bg.user_id = bgo.user_id and bg.tournament_id = bgo.tournament_id
 				 left join (select bgc.user_id, count(bgc.user_id) as numBetsClosed, bgc.tournament_id,
 							sum(bgc.bet1 + bgc.betx + bgc.bet2) as coinsClosedBets,
@@ -315,7 +315,7 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1, if(bgc.player2 = bgc.outcome, bet2 * odds2, 0))), 2) as coinsWon
 							from bets_games bgc
 							where bgc.outcome IS NOT NULL
-							group by bgc.user_id) bgc
+							group by bgc.user_id, bgc.tournament_id) bgc
 						   on bg.user_id = bgc.user_id and bg.tournament_id = bgc.tournament_id
 				 join users u on bg.user_id = u.id
 		where bg.tournament_id = ? and bg.user_id = ?
@@ -379,7 +379,8 @@ func GetTournamentOutcomes(tournamentId int) ([]*models.TournamentOutcome, error
 		join markets m on o.market_id = m.id
 		join market_types mt on m.type_id = mt.id
 		left join users u on u.id = o.value and m.type_id IN (2, 3)
-		where o.tournament_id = ?`, tournamentId)
+		where o.tournament_id = ?
+		order by o.market_id, o.oddsx`, tournamentId)
 
 	if err != nil {
 		return nil, err
