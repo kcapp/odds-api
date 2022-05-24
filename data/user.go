@@ -39,10 +39,13 @@ func GetUserByLogin(login string) (*models.User, error) {
 func GetUserTournamentBalance(userId int, tournamentId int, skipGameId int) (*models.UserTournamentBalance, error) {
 	utb, _ := GetUserTournamentRanking(tournamentId, userId)
 
+	gco, _ := GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId)
+
 	uabt, _ := GetUserTournamentTournamentCoinsOpen(userId, tournamentId, skipGameId)
 	ucat, _ := GetUserTournamentTournamentCoinsClosed(userId, tournamentId)
 	ucwt, _ := GetUserTournamentTournamentCoinsWon(userId, tournamentId)
 
+	utb.CoinsBetsOpen = gco.Coins
 	utb.TournamentCoinsOpen = uabt.Coins
 	utb.TournamentCoinsClosed = ucat.Coins
 	utb.TournamentCoinsWon = ucwt.Coins
