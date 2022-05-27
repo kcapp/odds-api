@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+
 	"github.com/kcapp/odds-api/models"
 )
 
@@ -33,8 +34,15 @@ func FinishGame(gf models.GameFinish) (int64, error) {
 		return 0, errors.New("error setting outcome")
 	}
 
+	// mark game metadata as bets off
+	s = `INSERT INTO odds.games_metadata (match_id, bets_off) VALUES (?, 1);`
+
+	args = make([]interface{}, 0)
+	args = append(args, gf.MatchId)
+	_, err = RunTransaction(s, args...)
+
 	if err != nil {
-		return 0, errors.New("error updating coins")
+		return 0, errors.New("error setting game finished")
 	}
 
 	return lid, err
