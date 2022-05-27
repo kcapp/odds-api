@@ -3,12 +3,13 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/kcapp/odds-api/data"
-	"github.com/kcapp/odds-api/models"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
+	"github.com/kcapp/odds-api/data"
+	"github.com/kcapp/odds-api/models"
 )
 
 func GetTournamentRanking(writer http.ResponseWriter, request *http.Request) {
@@ -110,4 +111,19 @@ func GetTournamentOutcomes(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	json.NewEncoder(writer).Encode(ranking)
+}
+
+func GetTournamentsMetadata(writer http.ResponseWriter, request *http.Request) {
+	SetHeaders(writer)
+	md, err := data.GetTournamentsMetadata()
+	if err == sql.ErrNoRows {
+		json.NewEncoder(writer).Encode(new(models.TournamentMetadata))
+		return
+	} else if err != nil {
+		log.Println("Unable to get metadata", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(writer).Encode(md)
 }

@@ -3,8 +3,9 @@ package data
 import (
 	"database/sql"
 	"errors"
-	"github.com/kcapp/odds-api/models"
 	"sort"
+
+	"github.com/kcapp/odds-api/models"
 )
 
 func GetUserTournamentCoinsOpen(userId, tournamentId, skipGameId int) (*models.CoinBalance, error) {
@@ -88,7 +89,7 @@ func GetUserTournamentCoinsClosed(userId, tournamentId int) (*models.CoinBalance
 }
 
 func GetUserTournamentCoinsWon(userId, tournamentId int) (*models.CoinBalance, error) {
-	s := `select COALESCE(sum(ROUND((if(bgf.player1 = bgf.outcome, bet1 * odds1, 0) + 
+	s := `select COALESCE(sum(ROUND((if(bgf.player1 = bgf.outcome, bet1 * odds1, 0) +
                 if(bgf.player2 = bgf.outcome, bet2 * odds2, 0)), 2)), 0) as coins
 				from bets_games bgf
 				where bgf.user_id = ? and bgf.tournament_id = ? and bgf.outcome is not null`
@@ -140,7 +141,7 @@ func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance
 			   coalesce(bgo.coinsOpenBets, 0) as coinsOpenBets,
 			   coalesce(bgc.coinsClosedBets, 0 ) as coinsClosedBets,
 			   coalesce(bgc.coinsWon, 0) as coinsWon,
-			   coalesce(bgo.potentialWinnings, 0) as potentialWinnings, 
+			   coalesce(bgo.potentialWinnings, 0) as potentialWinnings,
 			   1000, 1000, 1000
 		from bets_games bg
 				 left join (select bgo.user_id, count(bgo.user_id) as numBetsOpen, bgo.tournament_id,
@@ -296,7 +297,7 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 			   coalesce(bgo.coinsOpenBets, 0) as coinsOpenBets,
 			   coalesce(bgc.coinsClosedBets, 0 ) as coinsClosedBets,
 			   coalesce(bgc.coinsWon, 0) as coinsWon,
-			   coalesce(bgo.potentialWinnings, 0) as potentialWinnings, 
+			   coalesce(bgo.potentialWinnings, 0) as potentialWinnings,
 			   1000, 1000, 1000
 		from bets_games bg
 				 left join (select bgo.user_id, count(bgo.user_id) as numBetsOpen, bgo.tournament_id,
@@ -409,7 +410,7 @@ func GetTournamentOutcomes(tournamentId int) ([]*models.TournamentOutcome, error
 func GetUserGamesBets(userId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT
-			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome, 
+			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome,
 			       bm.odds1, bm.oddsx, bm.odds2, bm.player1, bm.player2,
 			       COALESCE(gm.bets_off, 0) as bets_off
 			FROM bets_games bm
@@ -444,7 +445,7 @@ func GetUserGamesBets(userId int) ([]*models.BetMatch, error) {
 func GetUserTournamentGamesBets(userId, tournamentId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT
-			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome, 
+			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome,
 			       bm.odds1, bm.oddsx, bm.odds2, bm.player1, bm.player2,
 			       COALESCE(gm.bets_off, 0) as bets_off
 			FROM bets_games bm
@@ -514,7 +515,7 @@ func GetUserTournamentTournamentsBets(userId, tournamentId int) ([]*models.BetTo
 func GetGameBets(gameId int) ([]*models.BetMatch, error) {
 	rows, err := models.DB.Query(`
 			SELECT
-			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome, 
+			bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2, bm.outcome,
 			       bm.odds1, bm.oddsx, bm.odds2, bm.player1, bm.player2,
 			       COALESCE(gm.bets_off, 0) as bets_off
 			FROM bets_games bm
@@ -552,7 +553,7 @@ func AddBet(bet models.BetMatch) (int64, error) {
 	var err error
 
 	if bet.ID == 0 {
-		sq = `INSERT INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2) 
+		sq = `INSERT INTO bets_games (id, user_id, match_id, tournament_id, player1, player2, bet1, betx, bet2, odds1, oddsx, odds2)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 		// We are placing new bet, but we might be passing 0s only
@@ -602,7 +603,7 @@ func deleteTournamentBet(bet models.BetOutcome) (int64, error) {
 }
 
 func insertTournamentBet(bet models.BetOutcome) (int64, error) {
-	sq := `INSERT INTO bets_tournament (user_id, outcome_id, tournament_id, bet1, betx, bet2) 
+	sq := `INSERT INTO bets_tournament (user_id, outcome_id, tournament_id, bet1, betx, bet2)
 			VALUES (?, ?, ?, ?, ?, ?)`
 
 	args := make([]interface{}, 0)
@@ -678,7 +679,7 @@ func GetUserActiveBets(bm models.BetMatch) (*models.UserActiveBets, error) {
 					   uc.coins
 				from user_coins uc
 				left join bets_games bm on uc.user_id = bm.user_id and uc.tournament_id = bm.tournament_id and bm.outcome is null
-				where uc.user_id = ? and uc.tournament_id = ? 
+				where uc.user_id = ? and uc.tournament_id = ?
 		`, bm.UserId, bm.TournamentId).
 			Scan(&uab.UserId, &uab.TournamentId, &uab.BetsTotal, &uab.AvailableCoins)
 	}
@@ -695,7 +696,7 @@ func GetUserBetById(betId int) (*models.BetMatch, error) {
 	bm := new(models.BetMatch)
 	{
 		err = models.DB.QueryRow(`
-		SELECT bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2 
+		SELECT bm.id, bm.user_id, bm.match_id, bm.tournament_id, bm.bet1, bm.betx, bm.bet2
 		FROM bets_games bm
 		WHERE bm.id = ?`, betId).
 			Scan(&bm.ID, &bm.UserId, &bm.MatchId, &bm.TournamentId, &bm.Bet1, &bm.BetX, &bm.Bet2)
@@ -706,6 +707,32 @@ func GetUserBetById(betId int) (*models.BetMatch, error) {
 	}
 
 	return bm, nil
+}
+
+func GetTournamentsMetadata() ([]*models.TournamentMetadata, error) {
+	rows, err := models.DB.Query(`SELECT tm.tournament_id, tm.bets_off FROM tournaments_metadata tm`)
+	defer rows.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	metadata := make([]*models.TournamentMetadata, 0)
+	for rows.Next() {
+		tm := new(models.TournamentMetadata)
+		err := rows.Scan(&tm.TournamentId, &tm.BetsOff)
+		if err != nil {
+			return nil, err
+		}
+
+		metadata = append(metadata, tm)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
 }
 
 func ValidateTournamentBetInput(bt models.BetOutcome) error {
