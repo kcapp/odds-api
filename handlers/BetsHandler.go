@@ -141,7 +141,7 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	log.Printf("Added bet %d for player %d", lid, bet.UserId)
 	SetHeaders(writer)
 	json.NewEncoder(writer).Encode(lid)
 }
@@ -169,6 +169,7 @@ func AddTournamentBet(writer http.ResponseWriter, reader *http.Request) {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Printf("Added tournament bet %d for player %d", lid, bet.UserId)
 
 	SetHeaders(writer)
 	json.NewEncoder(writer).Encode(lid)
