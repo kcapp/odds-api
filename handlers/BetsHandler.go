@@ -3,12 +3,13 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/kcapp/odds-api/data"
-	"github.com/kcapp/odds-api/models"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
+	"github.com/kcapp/odds-api/data"
+	"github.com/kcapp/odds-api/models"
 )
 
 func GetUserGamesBets(writer http.ResponseWriter, request *http.Request) {
@@ -127,6 +128,13 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 		return
 	}
 
+	if bet.Bet1 < 0 || bet.Bet2 < 0 || bet.BetX < 0 {
+		// Someone is doing something funny, don't allow it
+		log.Printf("Unable to add bet with negative value for user %d", bet.UserId)
+		http.Error(writer, "Don't do that", http.StatusBadRequest)
+		return
+	}
+
 	lid, err := data.AddBet(bet)
 	if err != nil {
 		log.Println("Unable to add bet", err)
@@ -145,6 +153,13 @@ func AddTournamentBet(writer http.ResponseWriter, reader *http.Request) {
 	if err != nil {
 		log.Println("Unable to deserialize outcome bet json", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if bet.Bet1 < 0 || bet.Bet2 < 0 || bet.BetX < 0 {
+		// Someone is doing something funny, don't allow it
+		log.Printf("Unable to add bet with negative value for user %d", bet.UserId)
+		http.Error(writer, "Don't do that", http.StatusBadRequest)
 		return
 	}
 
