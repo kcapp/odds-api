@@ -40,7 +40,7 @@ func GetUserTournamentTournamentCoinsOpen(userId, tournamentId, skipOutcomeId in
 	if skipOutcomeId != 0 {
 		s = `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
 			from bets_tournament bg
-			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null AND bg.outcome_id != ?`
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null AND bg.id != ?`
 		err := models.DB.QueryRow(s, userId, tournamentId, skipOutcomeId).Scan(&cb.Coins)
 		if err != nil {
 			return nil, err
