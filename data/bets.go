@@ -40,7 +40,7 @@ func GetUserTournamentTournamentCoinsOpen(userId, tournamentId, skipOutcomeId in
 	if skipOutcomeId != 0 {
 		s = `select COALESCE(sum(bg.bet1+bg.betx+bg.bet2), 0) as betCoins
 			from bets_tournament bg
-			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null AND bg.id != ?`
+			where bg.user_id = ? and bg.tournament_id = ? and bg.outcome is null AND bg.outcome_id != ?`
 		err := models.DB.QueryRow(s, userId, tournamentId, skipOutcomeId).Scan(&cb.Coins)
 		if err != nil {
 			return nil, err
@@ -637,10 +637,11 @@ func AddTournamentBet(bet models.BetOutcome) (int64, error) {
 		return lid, err
 	} else {
 
-		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ?, outcome_id = ? WHERE id = ?`
+		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ?, outcome_id = ? 
+				WHERE user_id = ? AND tournament_id = ? AND id = ?`
 
 		args := make([]interface{}, 0)
-		args = append(args, bet.Bet1, bet.BetX, bet.Bet2, bet.OutcomeId, bet.ID)
+		args = append(args, bet.Bet1, bet.BetX, bet.Bet2, bet.OutcomeId, bet.UserId, bet.TournamentId, bet.ID)
 		_, err := RunTransaction(sq, args...)
 
 		return int64(bet.ID), err
