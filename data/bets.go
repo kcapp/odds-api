@@ -151,7 +151,7 @@ func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance
 											  if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2), 0))),
 								2) as potentialWinnings
 							from bets_games bgo
-							where bgo.outcome IS NULL
+							where bgo.outcome IS NULL and tournament_id = ?
 							group by bgo.user_id) bgo
 						   on bg.user_id = bgo.user_id and bg.tournament_id = bgo.tournament_id
 				 left join (select bgc.user_id, count(bgc.user_id) as numBetsClosed, bgc.tournament_id,
@@ -159,12 +159,12 @@ func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance
 							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1, if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2, 0))), 2) as rawCoinsWon,
 							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1, if(bgc.player2 = bgc.outcome, bet2 * odds2, 0))), 2) as coinsWon
 							from bets_games bgc
-							where bgc.outcome IS NOT NULL
+							where bgc.outcome IS NOT NULL and tournament_id = ?
 							group by bgc.user_id) bgc
 						   on bg.user_id = bgc.user_id and bg.tournament_id = bgc.tournament_id
 				 join users u on bg.user_id = u.id
 		where bg.tournament_id = ?
-		group by bg.user_id`, tournamentId)
+		group by bg.user_id`, tournamentId, tournamentId, tournamentId)
 
 	if err != nil {
 		return nil, err
@@ -197,14 +197,14 @@ func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance
 func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
 	rows, err := models.DB.Query(`
 		select bt.user_id, u.first_name, u.last_name, bt.tournament_id,
-        (coalesce(bto1.numBetsOpen, 0) + coalesce(bto2.numBetsOpen, 0)) as numBets,
- 		(coalesce(btc1.numBetsClosed, 0) + coalesce(btc2.numBetsClosed, 0)) as numBetsClosed,
- 		0,0,0,
-        coalesce(bto1.totalPotential, 0) + coalesce (bto2.futuresPropsPotential, 0) as potentialWinnings,
-        coalesce(bto1.coinsOpenBets, 0) + coalesce(bto2.coinsOpenBets, 0) as coinsOpenBets,
- 		coalesce(btc1.coinsClosedBets, 0) + coalesce(btc2.coinsClosedBets, 0) as coinsClosedBets,
-	    coalesce(btc1.coinsWon, 0) + coalesce(btc2.coinsWon, 0) as coinsWon,
-	    1000
+			(coalesce(bto1.numBetsOpen, 0) + coalesce(bto2.numBetsOpen, 0)) + (coalesce(btc1.numBetsClosed, 0) + coalesce(btc2.numBetsClosed, 0)) as numBets,
+			(coalesce(btc1.numBetsClosed, 0) + coalesce(btc2.numBetsClosed, 0)) as numBetsClosed,
+			0,0,0,
+			coalesce(bto1.totalPotential, 0) + coalesce (bto2.futuresPropsPotential, 0) as potentialWinnings,
+			coalesce(bto1.coinsOpenBets, 0) + coalesce(bto2.coinsOpenBets, 0) as coinsOpenBets,
+			coalesce(btc1.coinsClosedBets, 0) + coalesce(btc2.coinsClosedBets, 0) as coinsClosedBets,
+			coalesce(btc1.coinsWon, 0) + coalesce(btc2.coinsWon, 0) as coinsWon,
+			1000
 		from bets_tournament bt
             left join
             (select bto.user_id, count(bto.user_id) as numBetsOpen, bto.tournament_id,
@@ -272,7 +272,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
 			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
 			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.TournamentCoinsWon, &b.StartCoins)
-		b.CoinsAvailable = b.StartCoins - b.TournamentCoinsOpen - b.TournamentCoinsClosed + b.CoinsWon
+		b.CoinsAvailable = b.StartCoins - b.TournamentCoinsOpen + b.TournamentCoinsWon
 		if err != nil {
 			return nil, err
 		}
@@ -637,7 +637,7 @@ func AddTournamentBet(bet models.BetOutcome) (int64, error) {
 		return lid, err
 	} else {
 
-		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ?, outcome_id = ? 
+		sq := `UPDATE bets_tournament SET bet1 = ?, betx = ?, bet2 = ?, outcome_id = ?
 				WHERE user_id = ? AND tournament_id = ? AND id = ?`
 
 		args := make([]interface{}, 0)
