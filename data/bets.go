@@ -135,7 +135,7 @@ func GetUserTournamentTournamentCoinsWon(userId, tournamentId int) (*models.Coin
 
 func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
 	rows, err := models.DB.Query(`
-		select bg.user_id, u.first_name, u.last_name, bg.tournament_id,
+		select bg.user_id, u.first_name, u.last_name, u.is_cheater, bg.tournament_id,
 			   (coalesce(bgo.numBetsOpen, 0) + coalesce(bgc.numBetsClosed, 0)) as numBets,
 			   coalesce(bgc.numBetsClosed, 0) as numBetsClosed,
 			   coalesce(bgo.coinsOpenBets, 0) as coinsOpenBets,
@@ -174,7 +174,7 @@ func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance
 	balances := make([]*models.UserTournamentBalance, 0)
 	for rows.Next() {
 		b := new(models.UserTournamentBalance)
-		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.TournamentId,
+		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.IsCheater, &b.TournamentId,
 			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
 			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
 		b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
