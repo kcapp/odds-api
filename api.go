@@ -46,6 +46,7 @@ func main() {
 	router.HandleFunc("/tournament/{tournamentId}/outcomes", handlers.GetTournamentOutcomes).Methods("GET")
 	router.HandleFunc("/tournament/{tournamentId}/start", handlers.StartTournament).Methods("POST", "OPTIONS")
 	router.HandleFunc("/tournament/meta", handlers.GetTournamentsMetadata).Methods("GET")
+	router.HandleFunc("/tournament/{tournamentId}/statistics", handlers.GetTournamentStatistics).Methods("GET")
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
