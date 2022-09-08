@@ -20,3 +20,9 @@ type Response struct {
 	TokenString    string `json:"token"`
 	RequiresChange bool   `json:"requires_change"`
 }
+
+type TokenData struct {
+	Authorized bool   `json:"authorized"`
+	Exp        int    `json:"exp"`
+	Login      string `json:"login"`
+}

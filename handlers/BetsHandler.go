@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/kcapp/odds-api/data"
@@ -118,6 +120,31 @@ func GetGameBets(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(bets)
 }
 
+func validateToken(userId int, token string) bool {
+	user, err := data.GetUserById(userId)
+	if err != nil {
+		log.Fatal("error:", err)
+		return false
+	}
+
+	split := strings.Split(token, ".")
+
+	d, err := base64.StdEncoding.DecodeString(split[1])
+	if err != nil {
+		log.Fatal("error:", err)
+		return false
+	}
+
+	var td models.TokenData
+	err = json.Unmarshal(d, &td)
+
+	if td.Login == user.Login {
+		return true
+	}
+
+	return false
+}
+
 // AddBet AddVisit will add the visit to the database
 func AddBet(writer http.ResponseWriter, reader *http.Request) {
 	var bet models.BetMatch
@@ -125,6 +152,13 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 	if err != nil {
 		log.Println("Unable to deserialize bet json", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	v := validateToken(bet.UserId, bet.Token)
+	if !v {
+		log.Println("Invalid token.", err)
+		http.Error(writer, err.Error(), http.StatusForbidden)
 		return
 	}
 
