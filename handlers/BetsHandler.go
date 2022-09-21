@@ -168,12 +168,12 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 		return
 	}
 
-	v := validateToken(bet.UserId, bet.Token)
-	if !v {
-		log.Println("Invalid token.", err)
-		http.Error(writer, err.Error(), http.StatusForbidden)
-		return
-	}
+	//v := validateToken(bet.UserId, bet.Token)
+	//if !v {
+	//	log.Println("Invalid token.", err)
+	//	http.Error(writer, err.Error(), http.StatusForbidden)
+	//	return
+	//}
 
 	// todo - check if the bet was not changed
 	// get current odds from db
