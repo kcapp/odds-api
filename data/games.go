@@ -48,6 +48,21 @@ func FinishGame(gf models.GameFinish) (int64, error) {
 	return lid, err
 }
 
+func GetGameMetadata(id int) (*models.GameMetadata, error) {
+	md := new(models.GameMetadata)
+	err := models.DB.QueryRow(`
+			SELECT
+			gm.match_id, gm.bets_off
+			FROM games_metadata gm
+			WHERE match_id = ?`, id).Scan(&md.MatchId, &md.BetsOff)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return md, nil
+}
+
 func GetGamesMetadata() ([]*models.GameMetadata, error) {
 	rows, err := models.DB.Query(`
 			SELECT

@@ -155,12 +155,29 @@ func AddBet(writer http.ResponseWriter, reader *http.Request) {
 		return
 	}
 
+	md, err := data.GetGameMetadata(bet.MatchId)
+	if err != nil && err != sql.ErrNoRows {
+		log.Println("Unable to get game metadata", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if md != nil && md.BetsOff == 1 {
+		log.Printf("Bets are off for this game")
+		http.Error(writer, "Bets are off for this game", http.StatusBadRequest)
+		return
+	}
+
 	v := validateToken(bet.UserId, bet.Token)
 	if !v {
 		log.Println("Invalid token.", err)
 		http.Error(writer, err.Error(), http.StatusForbidden)
 		return
 	}
+
+	// todo - check if the bet was not changed
+	// get current odds from db
+	// get new odds from kcapp api
 
 	if bet.Bet1 < 0 || bet.Bet2 < 0 || bet.BetX < 0 {
 		// Someone is doing something funny, don't allow it
