@@ -135,31 +135,50 @@ func GetUserTournamentTournamentCoinsWon(userId, tournamentId int) (*models.Coin
 
 func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
 	rows, err := models.DB.Query(`
-		select bg.user_id, u.first_name, u.last_name, u.is_cheater, bg.tournament_id,
+		select bg.user_id,
+			   u.first_name,
+			   u.last_name,
+			   u.is_cheater,
+			   bg.tournament_id,
 			   (coalesce(bgo.numBetsOpen, 0) + coalesce(bgc.numBetsClosed, 0)) as numBets,
-			   coalesce(bgc.numBetsClosed, 0) as numBetsClosed,
-			   coalesce(bgo.coinsOpenBets, 0) as coinsOpenBets,
-			   coalesce(bgc.coinsClosedBets, 0 ) as coinsClosedBets,
-			   coalesce(bgc.coinsWon, 0) as coinsWon,
-			   coalesce(bgo.potentialWinnings, 0) as potentialWinnings,
-			   1000, 1000, 1000
+			   coalesce(bgc.numBetsClosed, 0)                                  as numBetsClosed,
+			   coalesce(bgo.coinsOpenBets, 0)                                  as coinsOpenBets,
+			   coalesce(bgc.coinsClosedBets, 0)                                as coinsClosedBets,
+			   coalesce(bgc.coinsWon, 0)                                       as coinsWon,
+			   coalesce(bgo.potentialWinnings, 0)                              as potentialWinnings,
+			   1000,
+			   1000,
+			   1000
 		from bets_games bg
-				 left join (select bgo.user_id, count(bgo.user_id) as numBetsOpen, bgo.tournament_id,
-							bgo.bet1, bgo.betx, bgo.bet2,
-							sum(bgo.bet1 + bgo.betx + bgo.bet2) as coinsOpenBets,
-							ROUND(SUM(GREATEST(if(bgo.bet1 > 0, bgo.bet1 * bgo.odds1 - (bgo.bet1 + bgo.bet2), 0),
-											  if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2), 0))),
-								2) as potentialWinnings
+				 left join (select bgo.user_id,
+								   count(bgo.user_id)                  as numBetsOpen,
+								   bgo.tournament_id,
+								   bgo.bet1,
+								   bgo.betx,
+								   bgo.bet2,
+								   sum(bgo.bet1 + bgo.betx + bgo.bet2) as coinsOpenBets,
+								   ROUND(SUM(GREATEST(if(bgo.bet1 > 0, bgo.bet1 * bgo.odds1 - (bgo.bet1 + bgo.bet2 + bgo.betx), 0),
+													  if(bgo.betx > 0, bgo.betx * bgo.oddsx - (bgo.bet1 + bgo.bet2 + bgo.betx), 0),
+													  if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2 + bgo.betx), 0))),
+										 2)                            as potentialWinnings
 							from bets_games bgo
-							where bgo.outcome IS NULL and tournament_id = ?
+							where bgo.outcome IS NULL
+							  and tournament_id = ?
 							group by bgo.user_id) bgo
 						   on bg.user_id = bgo.user_id and bg.tournament_id = bgo.tournament_id
-				 left join (select bgc.user_id, count(bgc.user_id) as numBetsClosed, bgc.tournament_id,
-							sum(bgc.bet1 + bgc.betx + bgc.bet2) as coinsClosedBets,
-							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1, if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2, 0))), 2) as rawCoinsWon,
-							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1, if(bgc.player2 = bgc.outcome, bet2 * odds2, 0))), 2) as coinsWon
+				 left join (select bgc.user_id,
+								   count(bgc.user_id)                                                       as numBetsClosed,
+								   bgc.tournament_id,
+								   sum(bgc.bet1 + bgc.betx + bgc.bet2)                                      as coinsClosedBets,
+								   ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1,
+											 if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2,
+											 if(bgc.outcome = 0, betx * oddsx - betx, 0)))), 2) as rawCoinsWon,
+								   ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1,
+											 if(bgc.player2 = bgc.outcome, bet2 * odds2,
+											 if(bgc.outcome = 0, betx * oddsx, 0)))), 2)        as coinsWon
 							from bets_games bgc
-							where bgc.outcome IS NOT NULL and tournament_id = ?
+							where bgc.outcome IS NOT NULL
+							  and tournament_id = ?
 							group by bgc.user_id) bgc
 						   on bg.user_id = bgc.user_id and bg.tournament_id = bgc.tournament_id
 				 join users u on bg.user_id = u.id
@@ -303,8 +322,10 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 				 left join (select bgo.user_id, count(bgo.user_id) as numBetsOpen, bgo.tournament_id,
 							bgo.bet1, bgo.betx, bgo.bet2,
 							sum(bgo.bet1 + bgo.betx + bgo.bet2) as coinsOpenBets,
-							ROUND(SUM(GREATEST(if(bgo.bet1 > 0, bgo.bet1 * bgo.odds1 - (bgo.bet1 + bgo.bet2), 0),
-											  if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2), 0))),
+							ROUND(SUM(GREATEST(if(bgo.bet1 > 0, bgo.bet1 * bgo.odds1 - (bgo.bet1 + bgo.bet2 + bgo.betx), 0),
+											   if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2 + bgo.betx), 0),
+							    			   if(bgo.betx > 0, bgo.betx * bgo.oddsx - (bgo.bet1 + bgo.bet2 + bgo.betx), 0)
+							    )),
 								2) as potentialWinnings
 							from bets_games bgo
 							where bgo.outcome IS NULL
@@ -312,8 +333,16 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 						   on bg.user_id = bgo.user_id and bg.tournament_id = bgo.tournament_id
 				 left join (select bgc.user_id, count(bgc.user_id) as numBetsClosed, bgc.tournament_id,
 							sum(bgc.bet1 + bgc.betx + bgc.bet2) as coinsClosedBets,
-							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1, if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2, 0))), 2) as rawCoinsWon,
-							ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1, if(bgc.player2 = bgc.outcome, bet2 * odds2, 0))), 2) as coinsWon
+							ROUND(SUM(
+							    if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1, 
+							        if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2, 
+							            if(bgc.outcome = 0, betx * oddsx - betx, 0)
+							            ))), 2) as rawCoinsWon,
+							ROUND(SUM(
+							    if(bgc.player1 = bgc.outcome, bet1 * odds1, 
+							        if(bgc.player2 = bgc.outcome, bet2 * odds2, 
+							          if(bgc.outcome = 0, betx * oddsx, 0)  
+							            ))), 2) as coinsWon
 							from bets_games bgc
 							where bgc.outcome IS NOT NULL
 							group by bgc.user_id, bgc.tournament_id) bgc
@@ -359,6 +388,49 @@ func GetUserTournamentRanking(tournamentId int, userId int) (*models.UserTournam
 		b.CoinsAvailable = 1000
 		return &b, err
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &b, nil
+}
+
+func GetTournamentStatistics(tournamentId int) (*models.TournamentStatistics, error) {
+	s := `select bg.tournament_id, count(bg.id) + bt.numTournamentBets as numBets
+										from bets_games bg
+										join (select bt.tournament_id, count(bt.id) as numTournamentBets
+											  from bets_tournament bt
+											  where bt.tournament_id = ?
+											  ) bt on bt.tournament_id = bg.tournament_id
+										where bg.tournament_id = ?
+										group by bg.tournament_id`
+
+	b := models.TournamentStatistics{
+		TournamentId:        tournamentId,
+		TournamentBetsCount: 0,
+		TournamentUserCount: 0,
+		BankWinnings:        0,
+		UserWinnings:        0,
+		BiggestWins:         nil,
+		BiggestLosses:       nil,
+	}
+
+	err := models.DB.QueryRow(s, tournamentId, tournamentId).Scan(&b.TournamentId, &b.TournamentBetsCount)
+
+	if err == sql.ErrNoRows {
+		return &b, err
+	}
+
+	s = `select count(t.user_id) numUsers from
+		(select bg.user_id
+		from bets_games bg
+		where bg.tournament_id = ?
+		union
+		select bt.user_id
+		from bets_tournament bt
+		where bt.tournament_id = ?) t`
+	err = models.DB.QueryRow(s, tournamentId, tournamentId).Scan(&b.TournamentUserCount)
 
 	if err != nil {
 		return nil, err
