@@ -257,7 +257,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 				select bto.user_id, count(bto.user_id) as numBetsClosed, bto.tournament_id,
 				bto.bet1, bto.betx, bto.bet2,
 				sum(bto.bet1 + bto.betx + bto.bet2) as coinsClosedBets,
-				sum(if(bto.outcome > o.value, bto.bet1 * o.odds1 - (bto.bet1 + bto.bet2), if(bto.outcome < o.value, bto.bet2 * o.odds2 - (bto.bet1 + bto.bet2), 0)))
+				sum(if(bto.outcome > o.value, bto.bet1 * o.odds1 - bto.bet1, if(bto.outcome < o.value, bto.bet2 * o.odds2 - bto.bet2, 0)))
 						as coinsWon
 				from bets_tournament bto
 					join outcomes o on bto.outcome_id = o.id
