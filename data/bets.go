@@ -213,6 +213,87 @@ func GetTournamentGameRanking(tournamentId int) ([]*models.UserTournamentBalance
 	return balances, nil
 }
 
+func GetTournamentGameRankingByLeaderBoard(tournamentId int, leaderboardId int) ([]*models.UserTournamentBalance, error) {
+	rows, err := models.DB.Query(`
+		select bg.user_id,
+			   u.first_name,
+			   u.last_name,
+			   u.is_cheater,
+			   bg.tournament_id,
+			   (coalesce(bgo.numBetsOpen, 0) + coalesce(bgc.numBetsClosed, 0)) as numBets,
+			   coalesce(bgc.numBetsClosed, 0)                                  as numBetsClosed,
+			   coalesce(bgo.coinsOpenBets, 0)                                  as coinsOpenBets,
+			   coalesce(bgc.coinsClosedBets, 0)                                as coinsClosedBets,
+			   coalesce(bgc.coinsWon, 0)                                       as coinsWon,
+			   coalesce(bgo.potentialWinnings, 0)                              as potentialWinnings,
+			   1000,
+			   1000,
+			   1000
+		from bets_games bg
+				 left join (select bgo.user_id,
+								   count(bgo.user_id)                  as numBetsOpen,
+								   bgo.tournament_id,
+								   bgo.bet1,
+								   bgo.betx,
+								   bgo.bet2,
+								   sum(bgo.bet1 + bgo.betx + bgo.bet2) as coinsOpenBets,
+								   ROUND(SUM(GREATEST(if(bgo.bet1 > 0, bgo.bet1 * bgo.odds1 - (bgo.bet1 + bgo.bet2 + bgo.betx), 0),
+													  if(bgo.betx > 0, bgo.betx * bgo.oddsx - (bgo.bet1 + bgo.bet2 + bgo.betx), 0),
+													  if(bgo.bet2 > 0, bgo.bet2 * bgo.odds2 - (bgo.bet1 + bgo.bet2 + bgo.betx), 0))),
+										 2)                            as potentialWinnings
+							from bets_games bgo
+							where bgo.outcome IS NULL
+							  and tournament_id = ?
+							group by bgo.user_id) bgo
+						   on bg.user_id = bgo.user_id and bg.tournament_id = bgo.tournament_id
+				 left join (select bgc.user_id,
+								   count(bgc.user_id)                                                       as numBetsClosed,
+								   bgc.tournament_id,
+								   sum(bgc.bet1 + bgc.betx + bgc.bet2)                                      as coinsClosedBets,
+								   ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1 - bet1,
+											 if(bgc.player2 = bgc.outcome, bet2 * odds2 - bet2,
+											 if(bgc.outcome = 0, betx * oddsx - betx, 0)))), 2) as rawCoinsWon,
+								   ROUND(SUM(if(bgc.player1 = bgc.outcome, bet1 * odds1,
+											 if(bgc.player2 = bgc.outcome, bet2 * odds2,
+											 if(bgc.outcome = 0, betx * oddsx, 0)))), 2)        as coinsWon
+							from bets_games bgc
+							where bgc.outcome IS NOT NULL
+							  and tournament_id = ?
+							group by bgc.user_id) bgc
+						   on bg.user_id = bgc.user_id and bg.tournament_id = bgc.tournament_id
+				 join users u on bg.user_id = u.id
+				 join users_leaderboards ul on ul.user_id = u.id and ul.leaderboard_id = ?
+		where bg.tournament_id = ?
+		group by bg.user_id`, tournamentId, tournamentId, leaderboardId, tournamentId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	balances := make([]*models.UserTournamentBalance, 0)
+	for rows.Next() {
+		b := new(models.UserTournamentBalance)
+		err := rows.Scan(&b.UserId, &b.FirstName, &b.LastName, &b.IsCheater, &b.TournamentId,
+			&b.BetsPlaced, &b.BetsClosed, &b.CoinsBetsOpen, &b.CoinsBetsClosed, &b.CoinsWon, &b.PotentialWinnings,
+			&b.TournamentCoinsOpen, &b.TournamentCoinsClosed, &b.StartCoins)
+		b.CoinsAvailable = b.StartCoins - b.CoinsBetsOpen - b.CoinsBetsClosed + b.CoinsWon
+		if err != nil {
+			return nil, err
+		}
+
+		balances = append(balances, b)
+	}
+
+	sort.Sort(models.SortBalanceByPotentialCoins(balances))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return balances, nil
+}
+
 func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, error) {
 	rows, err := models.DB.Query(`
 		select bt.user_id, u.first_name, u.last_name, bt.tournament_id,
@@ -226,6 +307,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 			1000
 		from bets_tournament bt
 			left join(
+				-- open bets, total (over/under)
 				select bto.user_id, count(bto.user_id) as numBetsOpen, bto.tournament_id,
 				bto.bet1, bto.betx, bto.bet2,
 				sum(bto.bet1 + bto.betx + bto.bet2) as coinsOpenBets,
@@ -239,6 +321,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 				group by bto.user_id
 			) bto1 on bt.user_id = bto1.user_id and bt.tournament_id = bto1.tournament_id
 			left join(
+				-- open bets futures / props
 				select bto.user_id, count(bto.user_id) as numBetsOpen, bto.tournament_id,
 				bto.bet1, bto.betx, bto.bet2,
 				sum(bto.bet1 + bto.betx + bto.bet2) as coinsOpenBets,
@@ -252,7 +335,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 					and bto.tournament_id = ?
 				group by bto.user_id
 			) bto2 on bt.user_id = bto2.user_id and bt.tournament_id = bto2.tournament_id
-			# closed bets for futures
+			-- closed bets total (over/under)
 			left join (
 				select bto.user_id, count(bto.user_id) as numBetsClosed, bto.tournament_id,
 				bto.bet1, bto.betx, bto.bet2,
@@ -268,6 +351,7 @@ func GetTournamentRanking(tournamentId int) ([]*models.UserTournamentBalance, er
 				group by bto.user_id
 			) btc1 on bt.user_id = btc1.user_id and bt.tournament_id = btc1.tournament_id
 			left join (
+				-- closed bets futures / props
 				select bto.user_id, count(bto.user_id) as numBetsClosed, bto.tournament_id,
 				bto.bet1, bto.betx, bto.bet2,
 				sum(bto.bet1 + bto.betx + bto.bet2) as coinsClosedBets,
@@ -587,6 +671,35 @@ func GetUserTournamentTournamentsBets(userId, tournamentId int) ([]*models.BetTo
 	}
 
 	return bets, nil
+}
+
+func GetUserGameLeaderboards(tournamentId int, userId int) ([]*models.LeaderBoard, error) {
+	rows, err := models.DB.Query(`
+			select l.id, l.board_name from users_leaderboards ul
+			join leaderboards l on ul.leaderboard_id = l.id
+			where  tournament_id = ? AND ul.user_id = ? AND l.type = 1`, tournamentId, userId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	lbs := make([]*models.LeaderBoard, 0)
+	for rows.Next() {
+		b := new(models.LeaderBoard)
+		err := rows.Scan(&b.ID, &b.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		lbs = append(lbs, b)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return lbs, nil
 }
 
 func GetGameBets(gameId int) ([]*models.BetMatch, error) {

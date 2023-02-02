@@ -42,11 +42,14 @@ func main() {
 	router.HandleFunc("/games/meta", handlers.GetGamesMetadata).Methods("GET")
 
 	router.HandleFunc("/tournament/{tournamentId}/gameranking", handlers.GetTournamentGameRanking).Methods("GET")
+	router.HandleFunc("/tournament/{tournamentId}/gameranking/{leaderboardId}", handlers.GetTournamentGameRankingByLeaderBoard).Methods("GET")
 	router.HandleFunc("/tournament/{tournamentId}/ranking", handlers.GetTournamentRanking).Methods("GET")
 	router.HandleFunc("/tournament/{tournamentId}/outcomes", handlers.GetTournamentOutcomes).Methods("GET")
 	router.HandleFunc("/tournament/{tournamentId}/start", handlers.StartTournament).Methods("POST", "OPTIONS")
 	router.HandleFunc("/tournament/meta", handlers.GetTournamentsMetadata).Methods("GET")
 	router.HandleFunc("/tournament/{tournamentId}/statistics", handlers.GetTournamentStatistics).Methods("GET")
+
+	router.HandleFunc("/leaderboards/games/{tournamentId}/{userId}", handlers.GetUserLeaderboards).Methods("GET")
 
 	log.Printf("Listening on port %d", config.APIConfig.Port)
 	log.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", config.APIConfig.Port), router))
